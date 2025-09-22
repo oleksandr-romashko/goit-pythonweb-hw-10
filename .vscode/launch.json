@@ -1,0 +1,34 @@
+{
+    // Press F5 to start debugging
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug FastAPI server",
+            "type": "debugpy", // VS Code's Python debugger
+            "request": "launch",
+            "module": "src.main", // run `python -m src.main`
+            "args": [],
+            "jinja": true, // enable template debugging (optional)
+            "cwd": "${workspaceFolder}", // project root
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env", // load .env if you use it
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Run FastAPI server (no debug)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "src.main",
+            "noDebug": true, // <-- run without debugger
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            },
+            "envFile": "${workspaceFolder}/.env",
+            "console": "integratedTerminal"
+        }
+    ]
+}
