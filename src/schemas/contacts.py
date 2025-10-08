@@ -81,6 +81,8 @@ class ContactBaseRequiredSchema(BaseModel):
         json_schema_extra={"example": date(2000, 1, 4).isoformat()},
     )
 
+    contact_id: int | None = None
+
     @field_validator("birthdate")
     def check_birthdate_not_in_future(  # pylint: disable=no-self-argument
         cls, value: date

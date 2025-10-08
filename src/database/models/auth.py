@@ -1,0 +1,31 @@
+"""Auth ORM models."""
+
+from typing import TYPE_CHECKING, List
+
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base
+from .mixins import TimestampMixin
+
+# Used for type hints only; avoids circular imports at runtime
+if TYPE_CHECKING:
+    from .contact import Contact
+
+
+class User(TimestampMixin, Base):
+    """ORM model representing an application user."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    username: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
+    hashed_password: Mapped[str] = mapped_column(String(), nullable=False)
+    avatar: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    contacts: Mapped[List["Contact"]] = relationship(back_populates="user")
+
+    def __repr__(self) -> str:
+        return f"User(id={self.id!r}, username={self.username!r})"
