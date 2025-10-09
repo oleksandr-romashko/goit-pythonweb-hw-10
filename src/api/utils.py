@@ -1,13 +1,11 @@
 """Utility API endpoints for the application."""
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from src.database.db import get_db
+from src.database.db import get_db_session
 from src.schemas.errors import InternalServerErrorResponse
 from src.schemas.utils import HealthCheckResponse
 from src.utils.errors import raise_http_500_error
@@ -34,17 +32,22 @@ router = APIRouter(tags=["Utils"])
         },
     },
 )
-async def check_app_health(db: AsyncSession = Depends(get_db)):
-    """Check if the API and database are up and running."""
-    try:
-        result = await db.execute(text("SELECT 1"))
-        scalar: Optional[int] = result.scalar_one_or_none()
+async def check_app_health(
+    db_session: AsyncSession = Depends(get_db_session),
+) -> HealthCheckResponse:
+    """Check if the API and database are up and running, else raise 500."""
+    await _ensure_db_connection(db_session)
+    logger.info("Health check OK")
+    return HealthCheckResponse.model_validate({"status": "ok"})
 
-        if scalar is None:
+
+async def _ensure_db_connection(db_session: AsyncSession) -> None:
+    """Try a simple DB query. Raise 500 if it fails."""
+    try:
+        result = await db_session.execute(text("SELECT 1"))
+        if result.scalar_one_or_none() is None:
             logger.error("Database is not configured correctly")
             raise_http_500_error("Database is not configured correctly")
-        logger.info("Health check OK")
-        return {"status": "ok"}
     except SQLAlchemyError:
         logger.error("Error connecting to the database", exc_info=True)
         raise_http_500_error("Error connecting to the database")
