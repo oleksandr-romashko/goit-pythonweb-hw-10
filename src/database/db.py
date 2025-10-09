@@ -51,7 +51,7 @@ session_manager = DatabaseSessionManager(config.DB_URL)
 """Singleton instance of DatabaseSessionManager with configured DB URL."""
 
 
-async def get_db():
+async def get_db_session():
     """FastAPI dependency to provide an async single-use database session."""
     async with session_manager.session() as session:
         yield session

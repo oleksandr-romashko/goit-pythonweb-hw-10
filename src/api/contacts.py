@@ -1,26 +1,25 @@
 """
 Contacts API endpoints.
 
-Provides CRUD operations for notes, including listing, retrieving, creating,
+Provides CRUD operations for contacts, including listing, retrieving, creating,
 updating, and deleting contacts.
 """
 
-from typing import List, Optional
+from typing import List
 
-from fastapi import APIRouter, Query, Path, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Path, Depends, status
 
-from src.database.db import get_db
 from src.schemas.contacts import (
     ContactModelSchema,
     ContactResponseSchema,
     ContactPartialUpdateSchema,
     ContactCelebrationResponseSchema,
+    ContactsFilterSchema,
+    get_contacts_query_filter,
 )
+from src.schemas.pagination import PaginationFilterSchema, get_pagination_filter
 from src.schemas.errors import ContactNotFoundErrorResponse
-
-from src.database.models import Contact
-import src.repository.contacts as repository_contacts
+from src.services.contacts_service import get_contacts_service, ContactsService
 
 from src.utils.errors import raise_http_404_error
 
@@ -35,9 +34,12 @@ router = APIRouter(prefix="/contacts", tags=["Contacts"])
     summary="Create a new contact",
     description="All fields except `info` are required.",
 )
-async def create_note(body: ContactModelSchema, db: AsyncSession = Depends(get_db)):
+async def create_contact(
+    body: ContactModelSchema,
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
     """Create a new contact."""
-    return await repository_contacts.create_contact(body, db)
+    return await contacts_service.create_contact(body)
 
 
 @router.get(
@@ -53,48 +55,13 @@ async def create_note(body: ContactModelSchema, db: AsyncSession = Depends(get_d
         "whether or not filters are provided."
     ),
 )
-async def read_all_contacts(
-    first_name: Optional[str] = Query(
-        None,
-        description=(
-            "Filer by first name match "
-            "(optional parameter, case-insensitive partial match search)"
-        ),
-    ),
-    last_name: Optional[str] = Query(
-        None,
-        description=(
-            "Filter by last name match "
-            "(optional parameter, case-insensitive partial match search)"
-        ),
-    ),
-    email: Optional[str] = Query(
-        None,
-        description=(
-            "Filter by e-mail match "
-            "(optional parameter, case-insensitive partial match search)"
-        ),
-    ),
-    skip: int = Query(
-        default=0,
-        ge=0,
-        description="Number of records to skip for pagination.",
-        example=0,
-    ),
-    limit: int = Query(
-        default=50,
-        ge=1,
-        le=1000,
-        description="Maximum number of contacts to return.",
-        example=50,
-    ),
-    db: AsyncSession = Depends(get_db),
-):
-    """Retrieve a paginated list of monitored resources."""
-    contacts: List[Contact] = await repository_contacts.get_all_contacts(
-        skip, limit, db, first_name, last_name, email
-    )
-    return contacts
+async def get_all_contacts(
+    pagination: PaginationFilterSchema = Depends(get_pagination_filter),
+    filters: ContactsFilterSchema = Depends(get_contacts_query_filter),
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> List[ContactResponseSchema]:
+    """Retrieve a paginated list of contacts with optional filters."""
+    return await contacts_service.get_all_contacts(pagination, filters)
 
 
 @router.get(
@@ -114,23 +81,11 @@ async def read_all_contacts(
     ),
 )
 async def get_upcoming_birthdays(
-    skip: int = Query(
-        default=0,
-        ge=0,
-        description="Number of records to skip for pagination.",
-        example=0,
-    ),
-    limit: int = Query(
-        default=50,
-        ge=1,
-        le=1000,
-        description="Maximum number of contacts to return.",
-        example=50,
-    ),
-    db: AsyncSession = Depends(get_db),
-):
+    pagination: PaginationFilterSchema = Depends(get_pagination_filter),
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> List[ContactCelebrationResponseSchema]:
     """Return a list of contacts whose birthdays fall within the next 7 days."""
-    return await repository_contacts.get_contacts_upcoming_birthdays(skip, limit, db)
+    return await contacts_service.get_contacts_upcoming_birthdays(pagination)
 
 
 @router.get(
@@ -145,16 +100,16 @@ async def get_upcoming_birthdays(
         }
     },
 )
-async def read_single_contact_by_id(
+async def get_single_contact_by_id(
     contact_id: int = Path(
         description="The ID of the contact to retrieve.",
         ge=1,
         example=1,
     ),
-    db: AsyncSession = Depends(get_db),
-):
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
     """Retrieve a single contact by its ID."""
-    contact = await repository_contacts.get_contact_by_id(contact_id, db)
+    contact = await contacts_service.get_contact_by_id(contact_id)
     if contact is None:
         raise_http_404_error("Contact not found")
     return contact
@@ -180,13 +135,13 @@ async def overwrite_contact(
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
-    db: AsyncSession = Depends(get_db),
-):
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
     """Fully update an existing contact by ID."""
-    note = await repository_contacts.update_contact_by_id(contact_id, body, db)
-    if note is None:
+    contact = await contacts_service.update_contact_by_id(contact_id, body)
+    if contact is None:
         raise_http_404_error("Contact not found")
-    return note
+    return contact
 
 
 @router.patch(
@@ -206,13 +161,13 @@ async def update_contact(
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
-    db: AsyncSession = Depends(get_db),
-):
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
     """Partially update an existing contact."""
-    note = await repository_contacts.update_contact_by_id(contact_id, body, db)
-    if note is None:
+    contact = await contacts_service.update_contact_by_id(contact_id, body)
+    if contact is None:
         raise_http_404_error("Contact not found")
-    return note
+    return contact
 
 
 @router.delete(
@@ -231,10 +186,10 @@ async def delete_contact(
     contact_id: int = Path(
         description="The ID of the contact to delete.", ge=1, example=1
     ),
-    db: AsyncSession = Depends(get_db),
-):
+    contacts_service: ContactsService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
     """Delete a contact by ID and return the deleted object."""
-    contact = await repository_contacts.remove_contact(contact_id, db)
+    contact = await contacts_service.remove_contact(contact_id)
     if contact is None:
         raise_http_404_error("Contact not found")
     return contact
