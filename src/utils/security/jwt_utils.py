@@ -22,7 +22,7 @@ class ExpiredTokenError(TokenError):
     """Raised when the token has expired."""
 
 
-def create_access_token(
+def issue_token(
     *,
     secret_key: str,
     algorithm: str,
@@ -106,7 +106,7 @@ def create_access_token(
     }
 
 
-def decode_access_token(
+def decode_token(
     token: str,
     secret_key: str,
     algorithms: List[str],
