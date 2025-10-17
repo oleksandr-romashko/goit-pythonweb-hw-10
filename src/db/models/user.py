@@ -1,11 +1,12 @@
-"""Auth ORM models."""
+"""User ORM model."""
 
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Integer, String
+from sqlalchemy import Integer, String, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
+from .enums.user_roles import UserRole
 from .mixins import TimestampMixin
 
 # Used for type hints only; avoids circular imports at runtime
@@ -24,6 +25,11 @@ class User(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(150), nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String(), nullable=False)
     avatar: Mapped[str] = mapped_column(String(255), nullable=True)
+
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    role: Mapped[UserRole] = mapped_column(
+        String(20), nullable=False, default=UserRole.USER, server_default=UserRole.USER
+    )
 
     contacts: Mapped[List["Contact"]] = relationship(back_populates="user")
 

@@ -16,8 +16,15 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 
-from src.api import root, utils, contacts
-from src.config.app_config import config
+from src.api.routers import (
+    auth_router,
+    contacts_router,
+    current_user_router,
+    root_router,
+    users_router,
+    utils_router,
+)
+from src.config import app_config
 from src.utils.constants import MESSAGE_ERROR_INTERNAL_SERVER_ERROR
 from src.utils.logger import logger
 
@@ -39,13 +46,36 @@ async def lifespan(
 
 app = FastAPI(
     lifespan=lifespan,
-    title="Contacts Manager API",
-    description="REST API for storing and managing personal contacts.",
+    title=app_config.APP_TITLE,
+    version=app_config.APP_VERSION,
+    description=app_config.APP_DESCRIPTION,
+    contact={
+        "name": app_config.APP_AUTHOR_NAME,
+        "url": app_config.APP_HOMEPAGE,
+        "email": app_config.APP_AUTHOR_EMAIL,
+    },
+    license_info={
+        "name": f"{app_config.APP_LICENSE_TITLE} License",
+        "url": app_config.APP_LICENSE_URL,
+    },
+    # https://swagger.io/docs/open-source-tools/swagger-ui/usage/configuration/
+    swagger_ui_parameters={
+        "persistAuthorization": False,
+        "tryItOutEnabled": False,
+        "displayRequestDuration": True,
+        "syntaxHighlight": {"theme": "agate"},
+        "docExpansion": "list",
+        "defaultModelsExpandDepth": -1,  # Hides schemas section completely
+    },
 )
 
-app.include_router(root.router)
-app.include_router(utils.router, prefix="/api")
-app.include_router(contacts.router, prefix="/api")
+
+app.include_router(root_router)
+app.include_router(utils_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
+app.include_router(users_router, prefix="/api")
+app.include_router(current_user_router, prefix="/api")
+app.include_router(contacts_router, prefix="/api")
 
 
 @app.exception_handler(RequestValidationError)
@@ -93,7 +123,7 @@ async def handle_global_exception(
 ) -> JSONResponse:
     """Catch all unhandled exceptions."""
     logger.exception("Unhandled exception: %s", exc)
-    if config.DEBUG:
+    if app_config.DEBUG:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -113,7 +143,10 @@ def main() -> None:
     import uvicorn
 
     uvicorn.run(
-        "src.main:app", host="0.0.0.0", port=config.WEB_PORT, reload=config.DEBUG
+        "src.main:app",
+        host="0.0.0.0",
+        port=app_config.WEB_PORT,
+        reload=app_config.DEBUG,
     )
 
 

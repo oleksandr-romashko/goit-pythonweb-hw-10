@@ -6,7 +6,7 @@ Exposes Base for metadata management and migrations.
 """
 
 from .base import Base
-from .auth import User
 from .contact import Contact
+from .user import User
 
-__all__ = ["Base", "User", "Contact"]
+__all__ = ["Base", "Contact", "User"]

@@ -5,18 +5,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
-from src.database.db import get_db_session
-from src.schemas.errors import InternalServerErrorResponse
-from src.schemas.utils import HealthCheckResponse
-from src.utils.errors import raise_http_500_error
+from src.utils.constants import (
+    MESSAGE_ERROR_DB_CONNECTION_ERROR,
+    MESSAGE_ERROR_DB_INVALID_CONFIG,
+)
 from src.utils.logger import logger
 
-router = APIRouter(tags=["Utils"])
+from src.api.dependencies import get_db_session
+from src.api.errors import raise_http_500_error
+from src.api.schemas.errors import InternalServerErrorResponse
+from src.api.schemas.utils import HealthCheckResponseSchema
+
+router = APIRouter(tags=["Utils (Public Access)"])
 
 
 @router.get(
     "/healthchecker",
-    response_model=HealthCheckResponse,
+    response_model=HealthCheckResponseSchema,
     summary="Check application health",
     description=(
         "Check if the API and database are up and running.\n\n"
@@ -34,11 +39,11 @@ router = APIRouter(tags=["Utils"])
 )
 async def check_app_health(
     db_session: AsyncSession = Depends(get_db_session),
-) -> HealthCheckResponse:
+) -> HealthCheckResponseSchema:
     """Check if the API and database are up and running, else raise 500."""
     await _ensure_db_connection(db_session)
     logger.info("Health check OK")
-    return HealthCheckResponse.model_validate({"status": "ok"})
+    return HealthCheckResponseSchema.model_validate({"status": "ok"})
 
 
 async def _ensure_db_connection(db_session: AsyncSession) -> None:
@@ -46,8 +51,17 @@ async def _ensure_db_connection(db_session: AsyncSession) -> None:
     try:
         result = await db_session.execute(text("SELECT 1"))
         if result.scalar_one_or_none() is None:
-            logger.error("Database is not configured correctly")
-            raise_http_500_error("Database is not configured correctly")
+            logger.error(
+                "Database is not configured correctly. Received None on SELECT 1"
+            )
+            raise_http_500_error(MESSAGE_ERROR_DB_INVALID_CONFIG)
     except SQLAlchemyError:
-        logger.error("Error connecting to the database", exc_info=True)
-        raise_http_500_error("Error connecting to the database")
+        logger.error(
+            (
+                "Error connecting to the database. "
+                "Wrong connection credentials, "
+                "database is not running or responding or just can't reach it."
+            ),
+            exc_info=True,
+        )
+        raise_http_500_error(MESSAGE_ERROR_DB_CONNECTION_ERROR)

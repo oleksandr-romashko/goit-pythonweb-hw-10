@@ -11,7 +11,7 @@ from .mixins import TimestampMixin
 
 # Used for type hints only; avoids circular imports at runtime
 if TYPE_CHECKING:
-    from .auth import User
+    from .user import User
 
 
 class Contact(TimestampMixin, Base):
@@ -31,7 +31,9 @@ class Contact(TimestampMixin, Base):
     )
 
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        Integer,
+        ForeignKey("users.id", name="fk_contacts_user_id", ondelete="CASCADE"),
+        nullable=False,
     )
 
     user: Mapped["User"] = relationship(back_populates="contacts")

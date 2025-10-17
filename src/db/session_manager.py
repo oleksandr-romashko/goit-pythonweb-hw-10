@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from src.config.app_config import config
+from src.config import app_config
 
 
 class DatabaseSessionManager:
@@ -47,11 +47,5 @@ class DatabaseSessionManager:
             await session.close()
 
 
-session_manager = DatabaseSessionManager(config.DB_URL)
+session_manager = DatabaseSessionManager(app_config.DB_URL)
 """Singleton instance of DatabaseSessionManager with configured DB URL."""
-
-
-async def get_db_session():
-    """FastAPI dependency to provide an async single-use database session."""
-    async with session_manager.session() as session:
-        yield session

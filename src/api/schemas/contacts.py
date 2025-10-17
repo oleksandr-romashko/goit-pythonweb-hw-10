@@ -10,7 +10,7 @@ from datetime import date
 
 from pydantic import BaseModel, Field, EmailStr, field_validator
 
-from .mixins import BaseORMModel, IdMixin, InfoMixin, TimestampsMixin
+from .mixins import FromOrmAttributesConfig, IdMixin, InfoMixin, TimestampsMixin
 
 
 class ContactBaseRequiredSchema(BaseModel):
@@ -27,7 +27,7 @@ class ContactBaseRequiredSchema(BaseModel):
     email: EmailStr = Field(
         description="E-mail address",
         max_length=150,
-        json_schema_extra={"example": "john.doe@gmail.com"},
+        json_schema_extra={"example": "john.doe@example.com"},
     )
     phone_number: str = Field(
         description="Phone number",
@@ -38,8 +38,6 @@ class ContactBaseRequiredSchema(BaseModel):
         description="Birthday date",
         json_schema_extra={"example": date(2000, 1, 4).isoformat()},
     )
-
-    contact_id: Optional[int] = None
 
     @field_validator("birthdate")
     def check_birthdate_not_in_future(  # pylint: disable=no-self-argument
@@ -55,20 +53,7 @@ class ContactModelSchema(InfoMixin, ContactBaseRequiredSchema):
     """Full contact schema including optional info."""
 
 
-class ContactResponseSchema(BaseORMModel, TimestampsMixin, ContactModelSchema, IdMixin):
-    """Schema for returning a contact in API responses."""
-
-
-class ContactCelebrationResponseSchema(BaseORMModel, ContactModelSchema, IdMixin):
-    """Schema for contacts with upcoming birthday celebrations."""
-
-    celebration_date: date = Field(
-        description="Actual celebration date",
-        json_schema_extra={"example": date(2025, 1, 6).isoformat()},
-    )
-
-
-class ContactPartialUpdateSchema(InfoMixin, BaseModel):
+class ContactBaseOptionalSchema(InfoMixin, BaseModel):
     """Schema for partial contact updates. All fields optional."""
 
     first_name: Optional[str] = Field(
@@ -87,7 +72,7 @@ class ContactPartialUpdateSchema(InfoMixin, BaseModel):
         None,
         description="E-mail address",
         max_length=150,
-        json_schema_extra={"example": "john.doe@gmail.com"},
+        json_schema_extra={"example": "john.doe@example.com"},
     )
     phone_number: Optional[str] = Field(
         None,
@@ -111,7 +96,7 @@ class ContactPartialUpdateSchema(InfoMixin, BaseModel):
         return value
 
 
-class ContactsFilterSchema(BaseModel):
+class ContactsFilterRequestSchema(BaseModel):
     """Schema for filtering contacts."""
 
     first_name: Optional[str] = Field(
@@ -139,14 +124,22 @@ class ContactsFilterSchema(BaseModel):
             "(optional parameter, case-insensitive partial match search)"
         ),
         max_length=150,
-        json_schema_extra={"example": "john.doe@gmail.com"},
+        json_schema_extra={"example": "john.doe@example.com"},
     )
 
 
-async def get_contacts_query_filter(
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    email: Optional[str] = None,
-) -> ContactsFilterSchema:
-    """Dependency provider for contacts filter."""
-    return ContactsFilterSchema(first_name=first_name, last_name=last_name, email=email)
+class ContactResponseSchema(
+    FromOrmAttributesConfig, TimestampsMixin, ContactModelSchema, IdMixin
+):
+    """Schema for returning a contact in API responses."""
+
+
+class ContactCelebrationResponseSchema(
+    FromOrmAttributesConfig, ContactModelSchema, IdMixin
+):
+    """Schema for contacts with upcoming birthday celebrations."""
+
+    celebration_date: date = Field(
+        description="Actual celebration date",
+        json_schema_extra={"example": date(2025, 1, 6).isoformat()},
+    )

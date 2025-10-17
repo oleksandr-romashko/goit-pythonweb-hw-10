@@ -7,11 +7,15 @@
         "healthchecker",
         "ilike",
         "levelname",
+        "libgravatar",
         "ondelete",
         "onupdate",
+        "passlib",
         "pydantic",
+        "redoc",
         "sessionmaker",
         "sqlalchemy",
+        "superadmin",
         "uvicorn"
     ]
 }

@@ -29,7 +29,7 @@ def issue_token(
     expiration_time_seconds: int,
     subject: Optional[str] = None,
     issuer: Optional[str] = None,
-    audience: Optional[List[str]] = None,
+    audience: Optional[str] = None,
     not_before: Optional[datetime] = None,
     data: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, str]:
@@ -83,7 +83,7 @@ def issue_token(
         payload["sub"] = str(subject)
     if issuer is not None:
         payload["iss"] = issuer
-    if audience is not None:
+    if audience:  # not None or empty list
         payload["aud"] = audience
     if not_before is not None:
         payload["nbf"] = int(not_before.timestamp())
@@ -110,6 +110,7 @@ def decode_token(
     token: str,
     secret_key: str,
     algorithms: List[str],
+    audience: Optional[str] = None,
     verify_nbf: bool = True,
     verify_exp: bool = True,
 ) -> Dict[str, Any]:
@@ -120,6 +121,7 @@ def decode_token(
         token (str): Encoded JWT string.
         secret_key (str): Secret key used for decoding.
         algorithms (list[str]): Allowed signing algorithm(s).
+        audience (str | None): Expected audience value to validate ('aud' claim).
         verify_nbf (bool): Whether to verify token activation time (`nbf` (not before) claim).
         verify_exp (bool): Whether to verify token expiration (`exp` (expiration) claim).
 
@@ -132,16 +134,21 @@ def decode_token(
         InvalidTokenError: If the token signature or structure is invalid.
 
     Notes:
-        - Automatically validates signature and standard claims (`exp` (expiration),
-          `nbf` (not before), `iat` (issued at)).
-        - Use in services that require trusted token validation before further checks.
+        - Automatically validates standard claims (`aud` (audience) if set, `exp` (expiration),
+          `nbf` (not before),
+           `iat` (issued at)).
     """
     try:
         payload: Dict[str, Any] = jwt.decode(
             token=token,
             key=secret_key,
             algorithms=algorithms,
-            options={"verify_nbf": verify_nbf, "verify_exp": verify_exp},
+            audience=audience,
+            options={
+                "verify_aud": audience is not None,
+                "verify_nbf": verify_nbf,
+                "verify_exp": verify_exp,
+            },
         )
         return payload
     except ExpiredSignatureError as exc:

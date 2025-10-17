@@ -1,10 +1,12 @@
 """Helper functions for working with SQLAlchemy ORM objects."""
 
+from typing import Dict
+
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import inspect
 
 
-def contact_to_dict(obj: DeclarativeBase) -> dict:
+def orm_to_dict(obj: DeclarativeBase) -> Dict:
     """
     Convert a SQLAlchemy ORM object into a dictionary containing only column attributes.
 
