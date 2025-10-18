@@ -1,4 +1,4 @@
-"""FastAPI api errors"""
+"""FastAPI api error responses"""
 
 from typing import Dict, Union
 
@@ -12,6 +12,7 @@ from src.api.schemas.errors import (
     ContactNotFoundErrorResponse,
     UsernameIsReservedErrorResponse,
     ResourceAlreadyExistsDictErrorResponse,
+    InternalServerErrorResponse,
 )
 
 ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES: Dict = {
@@ -101,4 +102,14 @@ ON_USER_REGISTER_CONFLICT_RESPONSE: Dict = {
             }
         },
     }
+}
+
+ON_INTERNAL_SERVER_ERROR_RESPONSE: Dict = {
+    500: {
+        "model": InternalServerErrorResponse,
+        "description": (
+            "Database is not configured correctly "
+            "or error connecting to the database"
+        ),
+    },
 }

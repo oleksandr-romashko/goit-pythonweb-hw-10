@@ -1,6 +1,6 @@
 """Utility API endpoints for the application."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
@@ -13,7 +13,7 @@ from src.utils.logger import logger
 
 from src.api.dependencies import get_db_session
 from src.api.errors import raise_http_500_error
-from src.api.schemas.errors import InternalServerErrorResponse
+from src.api.responses.error_responses import ON_INTERNAL_SERVER_ERROR_RESPONSE
 from src.api.schemas.utils import HealthCheckResponseSchema
 
 router = APIRouter(tags=["Utils (Public Access)"])
@@ -21,20 +21,16 @@ router = APIRouter(tags=["Utils (Public Access)"])
 
 @router.get(
     "/healthchecker",
-    response_model=HealthCheckResponseSchema,
     summary="Check application health",
     description=(
         "Check if the API and database are up and running.\n\n"
         "Returns **'ok'** status if the database connection succeeds."
     ),
+    response_model=HealthCheckResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successful health check.",
     responses={
-        500: {
-            "model": InternalServerErrorResponse,
-            "description": (
-                "Database is not configured correctly "
-                "or error connecting to the database"
-            ),
-        },
+        **ON_INTERNAL_SERVER_ERROR_RESPONSE,
     },
 )
 async def check_app_health(

@@ -24,7 +24,7 @@ from src.api.dependencies import (
     get_contacts_service,
 )
 from src.api.errors import raise_http_401_error, raise_http_409_error
-from src.api.errors.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
+from src.api.responses.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
 from src.api.schemas.auth import AccessTokenResponseSchema
 from src.api.schemas.users import (
     UserRegisterRequestSchema,
@@ -37,8 +37,6 @@ router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
 
 @router.post(
     "/register",
-    response_model=UserRegisteredResponseSchema,
-    status_code=status.HTTP_201_CREATED,
     summary="Public user registration",
     description=(
         "Create a new user by anonymous user.\n\n"
@@ -46,7 +44,12 @@ router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
         "There are  some ***reserved usernames*** that are not allowed to create user with: "
         f"{', '.join([f'_{name}_' for name in app_config.RESERVED_USERNAMES])}."
     ),
-    responses=ON_USER_REGISTER_CONFLICT_RESPONSE,
+    response_model=UserRegisteredResponseSchema,
+    status_code=status.HTTP_201_CREATED,
+    response_description="Successfully registered a new user.",
+    responses={
+        **ON_USER_REGISTER_CONFLICT_RESPONSE,
+    },
 )
 async def register_user(
     body: UserRegisterRequestSchema,
@@ -82,12 +85,14 @@ async def register_user(
 
 @router.post(
     "/login",
-    response_model=AccessTokenResponseSchema,
     summary="User login",
     description=(
         "Authenticate user based on `username` and `password` in the request body "
         "and return a valid JWT access token."
     ),
+    response_model=AccessTokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successfully authenticated user.",
 )
 async def login_user(
     body: UserLoginRequestSchema,
@@ -102,12 +107,14 @@ async def login_user(
 
 @router.post(
     "/oauth2-login",
-    response_model=AccessTokenResponseSchema,
     summary="OAuth2 scheme user login",
     description=(
         "Authenticate user based on OAuth2 login scheme "
         "and return a valid JWT access token."
     ),
+    response_model=AccessTokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successfully authenticated user.",
 )
 async def oauth2_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
