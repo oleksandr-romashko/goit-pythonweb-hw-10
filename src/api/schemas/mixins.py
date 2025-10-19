@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class FromOrmAttributesConfig(BaseModel):
     """
-    Base schema with ORM support via `from_attributes`.
+    Base schema with ORM support via `from_attributes` allowing to convert ORM model
+    into a Pydantic schema.
 
     Adds reading the instance attributes corresponding to the model field names.
     Provides integration with object-relational mappings (ORMs).
@@ -38,42 +39,7 @@ class TimestampsMixin(BaseModel):
     )
 
 
-class InfoMixin(BaseModel):
-    """Mixin adding an optional `info` field for free-form notes."""
-
-    info: Optional[str] = Field(
-        None,
-        description="Additional descriptive notes",
-        json_schema_extra={
-            "example": (
-                "Works in automotive. Met at conference in Prague 13.08.2025.\n"
-                "Loves cats, allergic to nuts and cocoa."
-            )
-        },
-    )
-
-
-class UserRoleMixin(BaseModel):
-    """Mixin adding an optional `role` field for user roles."""
-
-    role: Optional[str] = Field(
-        None,
-        description="User role (e.g., admin, user)",
-        json_schema_extra={"example": "admin"},
-    )
-
-
-class ContactsCountMixin(BaseModel):
-    """Mixin adding a `contacts_count` integer field."""
-
-    contacts_count: int = Field(
-        0,
-        description="Number of associated contacts",
-        json_schema_extra={"example": 42},
-    )
-
-
-class ExampleMixin(BaseModel):
+class ExampleGenerationMixin(BaseModel):
     """Mixin providing methods to generate example payloads from schema fields."""
 
     @classmethod
@@ -90,7 +56,9 @@ class ExampleMixin(BaseModel):
 
     @classmethod
     def generate_example_recursive(cls) -> Dict[str, Any]:
-        """Generate example recursively, handling nested models, lists, dicts, and date/time fields."""
+        """
+        Generate example recursively, handling nested models, lists, dicts, and date/time fields.
+        """
         example = {}
         for name, field in cls.model_fields.items():
             value: Any = None

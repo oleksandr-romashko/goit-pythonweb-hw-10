@@ -10,7 +10,23 @@ from datetime import date
 
 from pydantic import BaseModel, Field, EmailStr, field_validator
 
-from .mixins import FromOrmAttributesConfig, IdMixin, InfoMixin, TimestampsMixin
+from src.api.schemas.validators.common import at_least_one_field_required_validator
+from .mixins import FromOrmAttributesConfig, IdMixin, TimestampsMixin
+
+
+class InfoMixin(BaseModel):
+    """Mixin adding an optional `info` field for free-form notes."""
+
+    info: Optional[str] = Field(
+        None,
+        description="Additional descriptive notes",
+        json_schema_extra={
+            "example": (
+                "Works in automotive. Met at conference in Prague 13.08.2025.\n"
+                "Loves cats, allergic to nuts and cocoa."
+            )
+        },
+    )
 
 
 class ContactBaseRequiredSchema(BaseModel):
@@ -53,6 +69,7 @@ class ContactModelSchema(InfoMixin, ContactBaseRequiredSchema):
     """Full contact schema including optional info."""
 
 
+@at_least_one_field_required_validator
 class ContactBaseOptionalSchema(InfoMixin, BaseModel):
     """Schema for partial contact updates. All fields optional."""
 

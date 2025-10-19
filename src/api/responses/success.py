@@ -2,7 +2,7 @@
 
 from typing import Dict
 
-from src.api.schemas.users import (
+from src.api.schemas.users.responses import (
     UserAboutMeOneOfResponseSchema,
     UserAboutMeResponseSchema,
     UserAboutMeAdminResponseSchema,

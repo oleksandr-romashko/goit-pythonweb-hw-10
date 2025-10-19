@@ -26,11 +26,11 @@ from src.api.dependencies import (
 from src.api.errors import raise_http_401_error, raise_http_409_error
 from src.api.responses.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
 from src.api.schemas.auth import AccessTokenResponseSchema
-from src.api.schemas.users import (
+from src.api.schemas.users.requests import (
     UserRegisterRequestSchema,
     UserLoginRequestSchema,
-    UserRegisteredResponseSchema,
 )
+from src.api.schemas.users.responses import UserRegisteredResponseSchema
 
 router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
 

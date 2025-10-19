@@ -53,7 +53,7 @@ ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES: Dict = {
 }
 
 ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES: Dict = {
-    **ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,  # inherit all 401/403 errors of a regular active user
+    **ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,  # inherit 401/403 errors of a regular active user
     403: {
         "description": "Forbidden - Not active user or access denied",
         "model": Union[UserIsInactiveErrorResponse, AccessDeniedErrorResponse],

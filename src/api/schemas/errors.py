@@ -15,10 +15,10 @@ from src.utils.constants import (
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
 )
 
-from .mixins import ExampleMixin
+from .mixins import ExampleGenerationMixin
 
 
-class ErrorResponse(ExampleMixin, BaseModel):
+class ErrorResponse(ExampleGenerationMixin, BaseModel):
     """Common error parent."""
 
 
