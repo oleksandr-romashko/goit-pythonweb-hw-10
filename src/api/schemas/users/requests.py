@@ -8,6 +8,11 @@ from pydantic import (
 )
 
 from src.api.schemas.validators.common import at_least_one_field_required_validator
+from src.api.schemas.validators.users import (
+    user_password_strength_validator,
+    user_role_exists_validator,
+)
+
 from .fields import (
     UsernameField,
     EmailField,
@@ -16,10 +21,9 @@ from .fields import (
     RoleField,
     IsActiveField,
 )
-from .validators import user_password_validator, user_role_validator
 
 
-@user_password_validator
+@user_password_strength_validator
 class UserRegisterRequestSchema(BaseModel):
     """Schema for registering of a new user."""
 
@@ -40,8 +44,7 @@ class UserLoginRequestSchema(BaseModel):
 
 
 @at_least_one_field_required_validator
-@user_password_validator
-@user_role_validator
+@user_password_strength_validator
 class UserUpdateRequestSchema(BaseModel):
     """Schema for updating existing user by regular user."""
 
@@ -50,6 +53,7 @@ class UserUpdateRequestSchema(BaseModel):
     avatar: Optional[str] = AvatarField(optional=True)
 
 
+@user_role_exists_validator
 class UserUpdateAdminRequestSchema(UserUpdateRequestSchema):
     """Schema for updating existing user by admin user."""
 

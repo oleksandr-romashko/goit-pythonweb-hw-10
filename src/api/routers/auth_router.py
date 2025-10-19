@@ -47,9 +47,7 @@ router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
     response_model=UserRegisteredResponseSchema,
     status_code=status.HTTP_201_CREATED,
     response_description="Successfully registered a new user.",
-    responses={
-        **ON_USER_REGISTER_CONFLICT_RESPONSE,
-    },
+    responses={**ON_USER_REGISTER_CONFLICT_RESPONSE},
 )
 async def register_user(
     body: UserRegisterRequestSchema,

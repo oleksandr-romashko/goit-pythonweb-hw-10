@@ -7,7 +7,7 @@ from src.db.models.enums.user_roles import UserRole
 from src.utils.constants import AUTH_PASSWORD_SPECIAL_CHARS
 
 
-def user_password_validator(cls):
+def user_password_strength_validator(cls):
     """Decorator adding password field validation"""
 
     @field_validator("password")
@@ -31,10 +31,12 @@ def user_password_validator(cls):
     return cls
 
 
-def user_role_validator(cls):
+def user_role_exists_validator(cls):
     """Decorator adding non-exposing validation on the user role."""
 
     class Wrapper(cls):
+        """Validate role"""
+
         @model_validator(mode="before")
         @classmethod
         def _check_user_role(cls, values):  # pylint:  disable=w0613

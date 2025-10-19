@@ -23,12 +23,14 @@ from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_CONTACT_NOT_FOUND_RESPONSE,
 )
-from src.api.schemas.contacts import (
-    ContactModelSchema,
-    ContactResponseSchema,
-    ContactBaseOptionalSchema,
-    ContactCelebrationResponseSchema,
+from src.api.schemas.contacts.requests import (
+    ContactRequestSchema,
+    ContactOptionalRequestSchema,
     ContactsFilterRequestSchema,
+)
+from src.api.schemas.contacts.responses import (
+    ContactResponseSchema,
+    ContactCelebrationResponseSchema,
 )
 from src.api.schemas.pagination import (
     PaginationFilterRequestSchema,
@@ -38,9 +40,7 @@ from src.api.schemas.pagination import (
 router = APIRouter(
     prefix="/contacts",
     tags=["Contacts (User Access)"],
-    responses={
-        **ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
-    },
+    responses={**ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES},
 )
 
 
@@ -53,7 +53,7 @@ router = APIRouter(
     response_description="Successfully created a new contact.",
 )
 async def create_contact(
-    body: ContactModelSchema,
+    body: ContactRequestSchema,
     user: User = Depends(get_current_active_user),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
@@ -145,9 +145,7 @@ async def get_upcoming_birthdays(
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully retrieved user contact.",
-    responses={
-        **ON_CONTACT_NOT_FOUND_RESPONSE,
-    },
+    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
 )
 async def get_single_contact_by_id(
     contact_id: int = Path(
@@ -177,12 +175,10 @@ async def get_single_contact_by_id(
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully updated user contact.",
-    responses={
-        **ON_CONTACT_NOT_FOUND_RESPONSE,
-    },
+    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
 )
 async def overwrite_contact(
-    body: ContactModelSchema,
+    body: ContactRequestSchema,
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
@@ -201,16 +197,17 @@ async def overwrite_contact(
 @router.patch(
     "/{contact_id}",
     summary="Update contact (partially)",
-    description="Update only some provided fields of an existing contact. All fields are optional.",
+    description=(
+        "Update only some provided fields of an existing contact.\n\n<br>"
+        "All fields are optional, but at least one field should be provided."
+    ),
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully updated user contact.",
-    responses={
-        **ON_CONTACT_NOT_FOUND_RESPONSE,
-    },
+    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
 )
 async def update_contact(
-    body: ContactBaseOptionalSchema,
+    body: ContactOptionalRequestSchema,
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
@@ -233,9 +230,7 @@ async def update_contact(
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully deleted user contact.",
-    responses={
-        **ON_CONTACT_NOT_FOUND_RESPONSE,
-    },
+    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
 )
 async def delete_contact(
     contact_id: int = Path(

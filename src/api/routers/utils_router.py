@@ -29,9 +29,7 @@ router = APIRouter(tags=["Utils (Public Access)"])
     response_model=HealthCheckResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successful health check.",
-    responses={
-        **ON_INTERNAL_SERVER_ERROR_RESPONSE,
-    },
+    responses={**ON_INTERNAL_SERVER_ERROR_RESPONSE},
 )
 async def check_app_health(
     db_session: AsyncSession = Depends(get_db_session),
