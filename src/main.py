@@ -19,7 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from src.api.routers import (
     auth_router,
     contacts_router,
-    current_user_router,
+    me_router,
     root_router,
     users_router,
     utils_router,
@@ -74,7 +74,7 @@ app.include_router(root_router)
 app.include_router(utils_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
-app.include_router(current_user_router, prefix="/api")
+app.include_router(me_router, prefix="/api")
 app.include_router(contacts_router, prefix="/api")
 
 
