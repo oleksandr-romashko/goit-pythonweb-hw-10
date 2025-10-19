@@ -43,11 +43,16 @@ class UserLoginRequestSchema(BaseModel):
 @user_password_validator
 @user_role_validator
 class UserUpdateRequestSchema(BaseModel):
-    """Schema for updating existing user."""
+    """Schema for updating existing user by regular user."""
 
     email: Optional[EmailStr] = EmailField(optional=True)
     password: Optional[str] = PasswordField(optional=True)
     avatar: Optional[str] = AvatarField(optional=True)
 
+
+class UserUpdateAdminRequestSchema(UserUpdateRequestSchema):
+    """Schema for updating existing user by admin user."""
+
+    username: Optional[str] = UsernameField(optional=True)
     role: Optional[str] = RoleField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
