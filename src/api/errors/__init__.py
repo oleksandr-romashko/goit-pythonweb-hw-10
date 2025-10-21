@@ -1,4 +1,5 @@
 from .http_errors import (
+    raise_http_400_error,
     raise_http_401_error,
     raise_http_403_error,
     raise_http_404_error,
@@ -7,6 +8,7 @@ from .http_errors import (
 )
 
 __all__ = [
+    "raise_http_400_error",
     "raise_http_401_error",
     "raise_http_403_error",
     "raise_http_404_error",

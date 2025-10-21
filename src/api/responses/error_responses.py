@@ -2,18 +2,45 @@
 
 from typing import Dict, Union
 
-from src.utils.constants import MESSAGE_ERROR_CONTACT_NOT_FOUND
+from src.utils.constants import (
+    MESSAGE_ERROR_BAD_REQUEST,
+    MESSAGE_ERROR_CONTACT_NOT_FOUND,
+    MESSAGE_ERROR_DB_INVALID_CONFIG,
+)
 
 from src.api.schemas.errors import (
     ImproperTokenErrorResponse,
     InvalidTokenCredentialsErrorResponse,
     UserIsInactiveErrorResponse,
+    BadRequestErrorResponse,
     AccessDeniedErrorResponse,
     ContactNotFoundErrorResponse,
     UsernameIsReservedErrorResponse,
     ResourceAlreadyExistsDictErrorResponse,
     InternalServerErrorResponse,
 )
+
+ON_BAD_REQUEST_RESPONSE: Dict = {
+    400: {
+        "model": BadRequestErrorResponse,
+        "description": MESSAGE_ERROR_BAD_REQUEST,
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Bad request values": {
+                        "summary": "Combined details on bad password and email fields",
+                        "value": {
+                            "detail": {
+                                "password": "New password can't be the same as the old one",
+                                "email": "New email can't be the same as the current one",
+                            }
+                        },
+                    },
+                },
+            }
+        },
+    },
+}
 
 ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES: Dict = {
     401: {
@@ -107,9 +134,6 @@ ON_USER_REGISTER_CONFLICT_RESPONSE: Dict = {
 ON_INTERNAL_SERVER_ERROR_RESPONSE: Dict = {
     500: {
         "model": InternalServerErrorResponse,
-        "description": (
-            "Database is not configured correctly "
-            "or error connecting to the database"
-        ),
+        "description": f"{MESSAGE_ERROR_DB_INVALID_CONFIG} or error connecting to the database",
     },
 }

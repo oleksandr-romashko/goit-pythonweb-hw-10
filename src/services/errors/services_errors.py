@@ -1,6 +1,17 @@
 """Custom exception classes for service-level logic."""
 
 
+class BadProvidedDataError(Exception):
+    """Raised when provided data are incorrect."""
+
+    def __init__(self, errors: dict[str, str]):
+        self.errors = errors
+        super().__init__(f"User data conflict: {errors}")
+
+    def __str__(self) -> str:
+        return f"UserConflictError(errors={self.errors})"
+
+
 class InvalidUserCredentialsError(Exception):
     """Raised when provided user credentials are incorrect."""
 

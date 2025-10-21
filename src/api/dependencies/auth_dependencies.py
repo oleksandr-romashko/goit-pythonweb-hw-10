@@ -26,7 +26,10 @@ async def get_current_user(
     """Retrieve current user by ID from JWT token."""
     user = await user_service.get_user_by_id(user_id)
     if user is None:
-        logger.warning("User not found for id=%s", user_id)
+        logger.warning(
+            "User not found for id=%s. Token is valid, but the user wasn't found.",
+            user_id,
+        )
         raise_http_401_error(MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS)
 
     return user
@@ -38,7 +41,7 @@ async def get_current_active_user(
     """Ensure the current user is active."""
     if not user.is_active and user.role != UserRole.SUPERADMIN:
         logger.warning(
-            "Inactive user attempted to access protected resource: user id = %s, username = %s",
+            "Deactivated user attempted to access protected resource: user id = %s, username = %s",
             user.id,
             user.username,
         )

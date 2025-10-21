@@ -22,6 +22,21 @@ class ErrorResponse(ExampleGenerationMixin, BaseModel):
     """Common error parent."""
 
 
+class BadRequestErrorResponse(ErrorResponse):
+    """Error for 400 Bad Request when provided values are incorrect or improper."""
+
+    detail: str = Field(
+        json_schema_extra={
+            "example": {
+                "detail": {
+                    "password": "New password can't be the same as the old one",
+                    "email": "New email can't be the same as the current one",
+                }
+            },
+        },
+    )
+
+
 class InvalidAuthErrorResponse(ErrorResponse):
     """General error for 401 Unauthorized."""
 

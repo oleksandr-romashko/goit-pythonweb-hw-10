@@ -49,7 +49,12 @@ class UserUpdateRequestSchema(BaseModel):
     """Schema for updating existing user by regular user."""
 
     email: Optional[EmailStr] = EmailField(optional=True)
-    password: Optional[str] = PasswordField(optional=True)
+    old_password: Optional[str] = PasswordField(
+        optional=True, description="Old password to validate", example="OldStrongPass1!"
+    )
+    password: Optional[str] = PasswordField(
+        optional=True, description="New password to set", example="NewStrongPass1!"
+    )
     avatar: Optional[str] = AvatarField(optional=True)
 
 

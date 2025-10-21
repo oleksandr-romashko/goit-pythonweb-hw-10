@@ -7,12 +7,22 @@ from typing import NoReturn, Optional, Dict
 from fastapi import HTTPException, status
 
 from src.utils.constants import (
+    MESSAGE_ERROR_BAD_REQUEST,
     MESSAGE_ERROR_UNAUTHORIZED,
     MESSAGE_ERROR_FORBIDDEN,
     MESSAGE_ERROR_NOT_FOUND,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
 )
+
+
+def raise_http_400_error(
+    message: str = MESSAGE_ERROR_BAD_REQUEST, detail: Optional[Dict] = None
+) -> NoReturn:
+    """Raise a 400 Bad Request error with a consistent payload."""
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST, detail=detail or message
+    )
 
 
 def raise_http_401_error(message: str = MESSAGE_ERROR_UNAUTHORIZED) -> NoReturn:

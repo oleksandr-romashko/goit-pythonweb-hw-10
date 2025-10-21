@@ -1,6 +1,6 @@
 """Pydantic field wrappers for users operations."""
 
-from typing import Any
+from typing import Optional, Any
 
 from pydantic import (
     Field,
@@ -40,7 +40,10 @@ def EmailField(  # pylint: disable=invalid-name
 
 
 def PasswordField(  # pylint: disable=invalid-name
-    optional: bool = False, validate: bool = True
+    optional: bool = False,
+    validate: bool = True,
+    description: Optional[str] = None,
+    example: Optional[str] = None,
 ) -> Any:
     """Construct password field with optional validation and value example"""
     constraints = {}
@@ -49,9 +52,9 @@ def PasswordField(  # pylint: disable=invalid-name
 
     return Field(
         None if optional else ...,
-        description="Strong password",
+        description=description or "Strong password",
         **constraints,
-        json_schema_extra={"example": "StrongPass1!"},
+        json_schema_extra={"example": example or "StrongPass1!"},
     )
 
 
