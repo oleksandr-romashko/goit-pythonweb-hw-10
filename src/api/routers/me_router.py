@@ -38,15 +38,15 @@ from src.api.schemas.users.responses import (
     UserAboutMeAdminResponseSchema,
 )
 
-# TODO: DELETE /me — видалити свій акаунт (якщо ти це дозволяєш)
-# TODO: Можна додати дрібніші ендпоінти:
-# TODO:     PATCH /me/password — зміна пароля
-# TODO:     PATCH /me/avatar — зміна аватара
-# TODO:     PATCH /me/email — оновлення email з підтвердженням
+# TODO: Evaluate adding DELETE /me — delete your account
+# Add additional single action routes:
+# TODO:    PATCH /me/password — solely password change
+# TODO:    PATCH /me/avatar — solely avatar change
+# TODO:    PATCH /me/email — solely email change
 
 router = APIRouter(
     prefix="/users/me",
-    tags=["Current User / About Me (User Access)"],
+    tags=["Current User / About Me self-service (User Access)"],
     responses={**ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES},
 )
 
