@@ -6,7 +6,7 @@ from typing import Optional, Any, List, Dict, get_origin, get_args
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class FromOrmAttributesConfig(BaseModel):
+class FromOrmAttributesConfig:
     """
     Base schema with ORM support via `from_attributes` allowing to convert ORM model
     into a Pydantic schema.
@@ -18,13 +18,13 @@ class FromOrmAttributesConfig(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class IdMixin(BaseModel):
+class IdMixin:
     """Mixin adding an integer `id` field."""
 
     id: int = Field(json_schema_extra={"example": 1})
 
 
-class TimestampsMixin(BaseModel):
+class TimestampsMixin:
     """Mixin adding optional `created_at` and `updated_at` timestamps."""
 
     created_at: Optional[datetime] = Field(
