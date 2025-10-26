@@ -75,15 +75,15 @@ class UserService:
             is_active=is_active,
         )
 
-    async def get_user_by_id(self, user_id: int) -> User | None:
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Retrieve a user by ID or return None if not exists."""
         return await self.repo.get_user_by_id(user_id)
 
-    async def get_user_by_username(self, username: str) -> User | None:
+    async def get_user_by_username(self, username: str) -> Optional[User]:
         """Retrieve a user by username or return None if not exists."""
         return await self.repo.get_user_by_username(username)
 
-    async def get_user_by_email(self, email: str) -> User | None:
+    async def get_user_by_email(self, email: str) -> Optional[User]:
         """Retrieve a user by email or return None if not exists."""
         return await self.repo.get_user_by_email(email)
 
