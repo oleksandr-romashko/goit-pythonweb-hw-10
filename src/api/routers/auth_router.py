@@ -62,7 +62,7 @@ async def register_user(
         raise_http_409_error(MESSAGE_ERROR_USERNAME_IS_RESERVED)
 
     try:
-        user: User = await user_service.create_user(
+        user: User = await user_service.register_user(
             body.username, body.email, body.password
         )
     except UserConflictError as exc:

@@ -1,5 +1,10 @@
 """Custom exception classes for service-level logic."""
 
+from src.utils.constants import (
+    MESSAGE_ERROR_USER_ROLE_IS_INVALID,
+    MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
+)
+
 
 class BadProvidedDataError(Exception):
     """Raised when provided data are incorrect."""
@@ -38,3 +43,17 @@ class InvalidAccessTokenError(Exception):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid access token: {message}")
+
+
+class UserRoleIsInvalidError(Exception):
+    """Raised when user role is not a valid user role."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_IS_INVALID):
+        super().__init__(message)
+
+
+class UserRolePermissionError(Exception):
+    """Raised when operation can't be done with this role."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS):
+        super().__init__(message)

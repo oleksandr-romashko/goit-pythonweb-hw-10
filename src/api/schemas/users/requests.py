@@ -7,6 +7,8 @@ from pydantic import (
     EmailStr,
 )
 
+from src.db.models.enums.user_roles import UserRole
+
 from src.api.schemas.validators.common import at_least_one_field_required_validator
 from src.api.schemas.validators.users import (
     user_password_strength_validator,
@@ -30,6 +32,20 @@ class UserRegisterRequestSchema(BaseModel):
     username: str = UsernameField()
     email: EmailStr = EmailField()
     password: str = PasswordField()
+
+
+@user_role_exists_validator
+@user_password_strength_validator
+class UserAdminCreateRequestSchema(UserRegisterRequestSchema):
+    """Schema for manual user creation by admin or superadmin."""
+
+    role: str = RoleField(
+        optional=True,
+        default=UserRole.USER.value,
+        description="User role (e.g., user, admin). Only SuperAdmin can create Admins.",
+    )
+    avatar: Optional[str] = AvatarField(optional=True)
+    is_active: Optional[bool] = IsActiveField(optional=True, default=True)
 
 
 class UserLoginRequestSchema(BaseModel):

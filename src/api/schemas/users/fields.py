@@ -70,23 +70,39 @@ def AvatarField(optional: bool = False) -> Any:  # pylint: disable=invalid-name
     )
 
 
-def RoleField(optional: bool = False) -> Any:  # pylint: disable=invalid-name
-    """Construct user role field with value example"""
+def RoleField(  # pylint: disable=invalid-name
+    optional: bool = False,
+    default: Optional[str] = None,
+    description: Optional[str] = None,
+) -> Any:
+    """
+    Construct user role field with value example.
 
+    Doesn't validate against UserRoles to avoid exposing full list of roles.
+    Validation should occur at the service layer.
+
+    ⚠️ Note:
+    - If `optional=True`, the field may be omitted or set to `None`.
+    - If `default` is provided, it will be shown as an example in docs even if optional.
+    """
+
+    default_value = None if optional else (default if default is not None else ...)
     return Field(
-        None if optional else ...,
-        description="User role (e.g., user, admin, etc.)",
-        json_schema_extra={"example": "admin"},
+        default_value,
+        description=description or "User role (e.g., user, admin, etc.)",
+        json_schema_extra={"example": default or "user"},
     )
 
 
-def IsActiveField(optional: bool = False) -> Any:  # pylint: disable=invalid-name
+def IsActiveField(  # pylint: disable=invalid-name
+    optional: bool = False, default: Optional[bool] = True
+) -> Any:
     """Construct user active status field with value example"""
 
     return Field(
-        None if optional else ...,
+        None if optional else default,
         description="User active status",
-        json_schema_extra={"example": True},
+        json_schema_extra={"example": default or True},
     )
 
 

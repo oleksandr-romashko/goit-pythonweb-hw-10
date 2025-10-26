@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, status
 from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import UserService, ContactService
+from src.services.dtos import UserDTO
 from src.services.errors import (
     InvalidUserCredentialsError,
     BadProvidedDataError,
@@ -104,7 +105,7 @@ async def update_me(
     """Partially update current user information."""
     try:
         orm_user: Optional[User] = await user_service.update_user(
-            user, **body.model_dump()
+            UserDTO.from_orm(user), **body.model_dump()
         )
     except InvalidUserCredentialsError as exc:
         raise_http_403_error(str(exc))

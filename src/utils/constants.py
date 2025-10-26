@@ -17,6 +17,10 @@ MESSAGE_ERROR_INACTIVE_USER = "Inactive user"
 MESSAGE_ERROR_UNAUTHORIZED = "Unauthorized"
 MESSAGE_ERROR_FORBIDDEN = "Forbidden"
 MESSAGE_ERROR_ACCESS_DENIED = "Access denied"
+MESSAGE_ERROR_NOT_AUTHORIZED = "You are not authorized to perform this action"
+MESSAGE_ERROR_ADMIN_CANNOT_CREATE_ADMIN = (
+    "Admin is not allowed to create other admin user"
+)
 
 MESSAGE_ERROR_BAD_REQUEST = "Bad request"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
@@ -26,3 +30,6 @@ MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
 MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be used."
 
 MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
+
+MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
+MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"

@@ -3,6 +3,7 @@
         "asyncpg",
         "autoflush",
         "dotenv",
+        "dtos",
         "fastapi",
         "healthchecker",
         "ilike",
