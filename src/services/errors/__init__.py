@@ -7,6 +7,7 @@ from .services_errors import (
     InvalidAccessTokenError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
+    UserViewPermissionError,
 )
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "InvalidAccessTokenError",
     "UserRoleIsInvalidError",
     "UserRolePermissionError",
+    "UserViewPermissionError",
 ]

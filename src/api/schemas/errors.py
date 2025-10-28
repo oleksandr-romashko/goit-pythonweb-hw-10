@@ -10,6 +10,7 @@ from src.utils.constants import (
     MESSAGE_ERROR_INACTIVE_USER,
     MESSAGE_ERROR_ACCESS_DENIED,
     MESSAGE_ERROR_CONTACT_NOT_FOUND,
+    MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
@@ -82,6 +83,16 @@ class ContactNotFoundErrorResponse(ErrorResponse):
 
     detail: str = Field(
         json_schema_extra={"example": MESSAGE_ERROR_CONTACT_NOT_FOUND},
+    )
+
+
+class UserNotFoundErrorResponse(ErrorResponse):
+    """Error for 404 Not Found when a user is missing."""
+
+    detail: str = Field(
+        json_schema_extra={
+            "example": MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED
+        },
     )
 
 

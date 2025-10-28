@@ -6,6 +6,8 @@ from src.utils.constants import (
     MESSAGE_ERROR_BAD_REQUEST,
     MESSAGE_ERROR_CONTACT_NOT_FOUND,
     MESSAGE_ERROR_DB_INVALID_CONFIG,
+    MESSAGE_ERROR_USER_NOT_FOUND,
+    MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED,
 )
 
 from src.api.schemas.errors import (
@@ -15,6 +17,7 @@ from src.api.schemas.errors import (
     BadRequestErrorResponse,
     AccessDeniedErrorResponse,
     ContactNotFoundErrorResponse,
+    UserNotFoundErrorResponse,
     UsernameIsReservedErrorResponse,
     ResourceAlreadyExistsDictErrorResponse,
     InternalServerErrorResponse,
@@ -105,6 +108,13 @@ ON_CONTACT_NOT_FOUND_RESPONSE: Dict = {
     404: {
         "model": ContactNotFoundErrorResponse,
         "description": MESSAGE_ERROR_CONTACT_NOT_FOUND,
+    }
+}
+
+ON_USER_NOT_FOUND_RESPONSE: Dict = {
+    404: {
+        "model": UserNotFoundErrorResponse,
+        "description": f"{MESSAGE_ERROR_USER_NOT_FOUND} or {MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED}",
     }
 }
 

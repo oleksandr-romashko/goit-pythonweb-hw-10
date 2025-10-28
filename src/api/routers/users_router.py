@@ -7,20 +7,30 @@ Provides operations for users.
 from fastapi import APIRouter, Depends, status
 
 from src.db.models import User
-from src.services import UserService
+from src.services import UserService, ContactService
 from src.services.dtos import UserDTO
 from src.services.errors import (
     UserConflictError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
+    UserViewPermissionError,
 )
 from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
+    MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED,
 )
 
-from src.api.dependencies import get_current_active_admin_user, get_user_service
-from src.api.responses.error_responses import ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES
+from src.api.dependencies import (
+    get_current_active_admin_user,
+    get_user_service,
+    get_contacts_service,
+)
+from src.api.responses.error_responses import (
+    ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES,
+    ON_USER_NOT_FOUND_RESPONSE,
+)
+from src.api.responses.success_responses import ON_GET_USER_BY_ID_SUCCESS_RESPONSE
 from src.api.schemas.pagination import (
     PaginationFilterRequestSchema,
     PaginatedGenericResponseSchema,
@@ -33,6 +43,7 @@ from src.api.schemas.users.responses import UserAdminRegisteredUserResponseSchem
 from src.api.errors import (
     raise_http_400_error,
     raise_http_403_error,
+    raise_http_404_error,
     raise_http_409_error,
 )
 
@@ -45,9 +56,8 @@ router = APIRouter(
 
 @router.post(
     "/",
-    summary="Create a new user (manual, admin access)",
+    summary="Create a new user manually (users by admins and admins/users by superadmin)",
     description=(
-        "Create a new user manually. "
         "Accessible only for admin and superadmin users.\n\n"
         "- **Admin** can only create users with role '*User*'.\n"
         "- **Superadmin** can create users with roles '*User*' or '*Admin*'.\n"
@@ -125,6 +135,7 @@ async def get_all_users(
     Accessible only by admin and superadmin.
     """
     requester_dto = UserDTO.from_orm(user)
+
     users_dto, total_count = await user_service.get_all_users(
         requester_dto, pagination.model_dump(), filters.model_dump()
     )
@@ -143,3 +154,41 @@ async def get_all_users(
             "data": users_response,
         }
     )
+
+
+@router.get(
+    "/{user_id}",
+    summary="Get user details by ID",
+    description=(
+        "Retrieve details of a specific user by their ID.\n\n"
+        "Accessible only for **Admin** and **Superadmin**.\n\n"
+        "- **Superadmin** can see any user.\n"
+        "- **Admin** can see other users and admins, but cannot see other inactive admins.\n"
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model_exclude_none=True,
+    response_description="Successfully retrieved user details.",
+    responses={**ON_GET_USER_BY_ID_SUCCESS_RESPONSE, **ON_USER_NOT_FOUND_RESPONSE},
+)
+async def get_user_by_id(
+    user_id: int,
+    user: User = Depends(get_current_active_admin_user),
+    user_service: UserService = Depends(get_user_service),
+    contacts_service: ContactService = Depends(get_contacts_service),
+) -> UserAdminRegisteredUserResponseSchema:
+    """
+    Get a specific user by ID.
+    Accessible only by admin and superadmin.
+    """
+    requester_dto = UserDTO.from_orm(user)
+    try:
+        user_dto = await user_service.get_user_by_id_for_admin(
+            requester=requester_dto, user_id=user_id, contacts_service=contacts_service
+        )
+    except UserViewPermissionError:
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+
+    if not user_dto:
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+
+    return UserAdminRegisteredUserResponseSchema.model_validate(user_dto.to_dict())

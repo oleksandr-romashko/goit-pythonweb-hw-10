@@ -69,7 +69,7 @@ async def get_me(
     """Return current user information."""
     data = UserAboutMeAdminResponseSchema.model_validate(user)
 
-    # Add number of user contacts
+    # Add contacts count
     data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
     # Return full contact data for admin users

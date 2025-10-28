@@ -6,6 +6,7 @@ from src.api.schemas.users.responses import (
     UserAboutMeOneOfResponseSchema,
     UserAboutMeResponseSchema,
     UserAboutMeAdminResponseSchema,
+    UserAdminRegisteredUserResponseSchema,
 )
 
 ON_ME_SUCCESS_RESPONSE: Dict = {
@@ -25,6 +26,67 @@ ON_ME_SUCCESS_RESPONSE: Dict = {
                     "Admin user": {
                         "summary": "Example for admin user",
                         "value": UserAboutMeAdminResponseSchema.generate_example_recursive(),
+                    },
+                }
+            }
+        },
+    },
+}
+
+on_get_user_admin_other_admin_example = (
+    UserAdminRegisteredUserResponseSchema.generate_example_recursive()
+)
+for field in ("contacts_count", "created_at", "updated_at", "is_active"):
+    on_get_user_admin_other_admin_example.pop(field, None)
+
+on_get_user_admin_self_example = (
+    UserAdminRegisteredUserResponseSchema.generate_example_recursive()
+)
+on_get_user_admin_self_example.update({"role": "admin"})
+
+on_get_user_superadmin_admin_example = (
+    UserAdminRegisteredUserResponseSchema.generate_example_recursive()
+)
+on_get_user_superadmin_admin_example.update({"role": "admin"})
+
+on_get_user_superadmin_self_example = (
+    UserAdminRegisteredUserResponseSchema.generate_example_recursive()
+)
+on_get_user_superadmin_self_example.update({"role": "superadmin"})
+
+ON_GET_USER_BY_ID_SUCCESS_RESPONSE: Dict = {
+    200: {
+        "description": (
+            "Regular User or Admin response "
+            "on successfully retrieved current user information."
+        ),
+        "model": UserAdminRegisteredUserResponseSchema,
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Admin user getting regular user data": {
+                        "summary": "Example for ADMIN user getting regular USER data",
+                        "value": UserAdminRegisteredUserResponseSchema.generate_example_recursive(),
+                    },
+                    "Admin user getting other admin data": {
+                        "summary": "Example for ADMIN user getting other ADMIN data",
+                        "value": on_get_user_admin_other_admin_example,
+                    },
+                    "Admin user getting self data": {
+                        "summary": "Example for ADMIN user getting SELF user data",
+                        "value": on_get_user_admin_self_example,
+                    },
+                    "Superadmin user getting regular user data": {
+                        "summary": "Example for SUPERADMIN user getting regular USER data",
+                        "value": UserAdminRegisteredUserResponseSchema.generate_example_recursive(),
+                    },
+                    "Superadmin user getting active admin user data": {
+                        "summary": "Example for SUPERADMIN user getting active ADMIN user data",
+                        "value": on_get_user_superadmin_admin_example,
+                    },
+                    "Superadmin user getting self data": {
+                        "summary": "Example for SUPERADMIN user getting SELF user data",
+                        "value": on_get_user_superadmin_self_example,
                     },
                 }
             }

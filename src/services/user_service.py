@@ -12,6 +12,7 @@ from src.services.dtos import UserDTO
 from src.utils.logger import logger
 from src.utils.security.password_utils import get_password_hash, verify_password
 
+from .contact_service import ContactService
 from .dtos import UserWithStatsDTO
 from .errors import (
     BadProvidedDataError,
@@ -127,6 +128,61 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Retrieve a user by ID or return None if not exists."""
         return await self.repo.get_user_by_id(user_id)
+
+    async def get_user_by_id_for_admin(
+        self,
+        requester: UserDTO,
+        user_id: int,
+        contacts_service: ContactService,
+    ) -> Optional[UserWithStatsDTO]:
+        """
+        Retrieve a single user by ID, applying role-based visibility rules.
+
+        - SUPERADMIN can see any user.
+        - ADMIN cannot see other inactive admins.
+        - Contact counts are hidden for admins viewing other admins.
+        """
+        user = await self.repo.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        # Restrict providing superadmin data
+        if user.role == UserRole.SUPERADMIN and requester.id != user.id:
+            logger.warning(
+                "%s requested info about SUPERADMIN user %s while not allowed to view that user",
+                requester,
+                UserDTO.from_orm(user),
+            )
+            return None
+
+        # If current user is admin - do not provide inactive admin user data
+        if (
+            requester.role == UserRole.ADMIN
+            and user.role == UserRole.ADMIN
+            and not user.is_active
+        ):
+            logger.info(
+                (
+                    "%s requested info about other inactive ADMIN user %s "
+                    "while not allowed to view that user"
+                ),
+                requester,
+                UserDTO.from_orm(user),
+            )
+            return None
+
+        # Define flag, if to show full or partial user information
+        show_full = (
+            requester.role == UserRole.SUPERADMIN
+            or requester.id == user.id
+            or user.role == UserRole.USER
+        )
+
+        if show_full:
+            contacts_count = await contacts_service.get_contacts_count(user.id)
+            return UserWithStatsDTO.from_orm_with_count(user, contacts_count)
+
+        return UserWithStatsDTO.from_orm_with_count(user, hide_personal=True)
 
     async def get_user_by_username(self, username: str) -> Optional[User]:
         """Retrieve a user by username or return None if not exists."""

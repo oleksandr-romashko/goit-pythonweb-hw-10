@@ -57,3 +57,10 @@ class UserRolePermissionError(Exception):
 
     def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS):
         super().__init__(message)
+
+
+class UserViewPermissionError(Exception):
+    """Raised when user is not allowed to view existing user data."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS):
+        super().__init__(message)

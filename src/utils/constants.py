@@ -33,3 +33,8 @@ MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
 
 MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
+MESSAGE_ERROR_USER_NOT_FOUND = "User not found"
+MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED = "User view is restricted"
+MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED = (
+    "User does not exist or you are not allowed to view this user"
+)

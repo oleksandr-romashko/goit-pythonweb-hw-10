@@ -16,7 +16,7 @@ class UserWithStatsDTO:
     username: str
     email: Optional[str]
     role: UserRole
-    is_active: bool
+    is_active: Optional[bool]
     avatar: Optional[str]
     contacts_count: Optional[int]
     created_at: Optional[datetime]
@@ -26,7 +26,7 @@ class UserWithStatsDTO:
     def from_orm_with_count(
         cls,
         user: User,
-        contacts_count: Optional[int],
+        contacts_count: Optional[int] = None,
         hide_email: bool = False,
         hide_personal: bool = False,
     ) -> Self:
@@ -36,7 +36,7 @@ class UserWithStatsDTO:
             username=user.username,
             email=user.email if not hide_email else None,
             role=user.role,
-            is_active=user.is_active,
+            is_active=user.is_active if not hide_personal else None,
             avatar=user.avatar,
             created_at=user.created_at if not hide_personal else None,
             updated_at=user.updated_at if not hide_personal else None,
