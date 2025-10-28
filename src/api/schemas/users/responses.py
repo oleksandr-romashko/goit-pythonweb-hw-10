@@ -8,8 +8,6 @@ from pydantic import (
     EmailStr,
 )
 
-from src.db.models.enums.user_roles import UserRole
-
 from src.api.schemas.mixins import (
     IdMixin,
     FromOrmAttributesConfig,
@@ -38,26 +36,31 @@ class UserResponseSchema(ExampleGenerationMixin, FromOrmAttributesConfig, BaseMo
 class UserRegisteredResponseSchema(UserResponseSchema):
     """Response schema to represent newly created user data."""
 
-    contacts_count: int = ContactsCountField()
+    contacts_count: Optional[int] = ContactsCountField(optional=True)
 
 
-class UserAdminCreatedUserResponseSchema(
+class UserAdminRegisteredUserResponseSchema(
     TimestampsMixin, UserRegisteredResponseSchema, IdMixin
 ):
     """Response schema to represent newly created user by admin user."""
 
-    role: Optional[UserRole] = RoleField(optional=True)
+    role: Optional[str] = RoleField(optional=True)
     avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
 
+    __tablename__ = "users"
 
-class UserAboutMeResponseSchema(UserResponseSchema):
+
+class UserAboutMeResponseSchema(UserResponseSchema, IdMixin):
     """Response schema to represent information about the current user."""
 
     contacts_count: int = ContactsCountField()
 
 
-class UserAboutMeAdminResponseSchema(TimestampsMixin, UserAboutMeResponseSchema):
+class UserAboutMeAdminResponseSchema(
+    TimestampsMixin,
+    UserAboutMeResponseSchema,
+):
     """Response schema to represent information about the current user viewed by admin users."""
 
     role: Optional[str] = RoleField(optional=True)

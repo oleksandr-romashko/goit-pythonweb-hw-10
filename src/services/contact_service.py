@@ -22,7 +22,7 @@ class ContactService:
     async def get_all_contacts(
         self, user_id: int, pagination: Dict[str, int], filters: Dict[str, Any]
     ) -> Tuple[List[Contact], int]:
-        """Return a paginated list of contacts with optional filters."""
+        """Return a paginated list of contacts with applied optional filters."""
         # Check if there are contacts
         total_count = await self.repo.get_contacts_total_count(user_id)
         if total_count == 0:

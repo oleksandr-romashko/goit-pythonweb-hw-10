@@ -1,4 +1,4 @@
-"""DTO module representing users"""
+"""DTO module representing user"""
 
 from dataclasses import dataclass
 from typing import Optional, Self

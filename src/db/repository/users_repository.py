@@ -6,12 +6,15 @@ Provides asynchronous CRUD operations and query helpers.
 This layer encapsulates all database logic, isolating it from business and routing layers.
 """
 
-from typing import Optional, Any, List, Dict
+from typing import Optional, Any, List, Dict, Tuple
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db.models import User
+from src.db.models import User, Contact
+from src.db.models.enums.user_roles import UserRole
+
+from src.api.schemas.users.enums import UserFilterRole
 
 
 class UsersRepository:
@@ -28,17 +31,108 @@ class UsersRepository:
         await self.db.refresh(user)
         return user
 
+    async def get_users_total_count(self) -> int:
+        """Return the total number of non-superadmin users."""
+        result = await self.db.execute(
+            select(func.count())  # pylint: disable=E1102
+            .select_from(User)
+            .filter(User.role != UserRole.SUPERADMIN)
+        )
+        return result.scalar() or 0
+
     async def get_all_users(
         self,
         skip: int = 0,
         limit: int = 50,
-    ) -> List[User]:
-        """Return a paginated list of users."""
-        stmt = (
-            select(User).order_by(func.lower(User.username)).offset(skip).limit(limit)
-        )
-        result = await self.db.execute(stmt)
-        return list(result.scalars().all())
+        username: Optional[str] = None,
+        email: Optional[str] = None,
+        role: Optional[UserFilterRole] = None,
+        is_active: Optional[bool] = None,
+        inactive_last: bool = False,
+        exclude_user_id: Optional[int] = None,
+        requester_role: UserRole = UserRole.USER,
+    ) -> Tuple[List[Tuple[User, int]], int]:
+        """
+        Return a paginated list of users with total contact count for each,
+        along with the total count for pagination.
+
+        This query performs:
+        - Filtering by optional parameters (case-insensitive partial matches)
+        - Exclusion of SUPERADMIN users
+        - LEFT JOIN to the contacts table to count associated contacts
+        - Aggregation and pagination
+
+        Note: This method executes two SQL queries (count + paginated data).
+        """
+        # --- Base statements ---
+
+        count_stmt = select(func.count()).select_from(User)  # pylint: disable=E1102
+
+        users_stmt = select(
+            User,
+            func.count(func.distinct(Contact.id)).label(  # pylint: disable=E1102
+                "contacts_count"
+            ),
+        ).outerjoin(Contact, Contact.user_id == User.id)
+
+        # --- Filters ---
+
+        filters = []
+
+        # Role filters
+
+        # Show certain user roles
+        filters.append(or_(User.role == UserRole.ADMIN, User.role == UserRole.USER))
+
+        # Hide from admin user other inactive admins
+        if requester_role == UserRole.ADMIN:
+            filters.append(~((User.role == UserRole.ADMIN) & (User.is_active == False)))
+
+        # Optional filters
+
+        if exclude_user_id:
+            filters.append(User.id != exclude_user_id)
+        if username:
+            filters.append(User.username.ilike(f"%{username}%"))
+        if email:
+            filters.append(User.email.ilike(f"%{email}%"))
+        if role:
+            filters.append(User.role == role)
+        if is_active is not None:
+            filters.append(User.is_active == is_active)
+
+        if filters:
+            count_stmt = count_stmt.filter(*filters)
+            users_stmt = users_stmt.filter(*filters)
+
+        # --- Total users count ---
+
+        count_result = await self.db.execute(count_stmt)
+        total_count = count_result.scalar() or 0
+        if total_count == 0:
+            return [], 0
+
+        # --- Users ---
+
+        # Grouping (skip for count)
+        users_stmt = users_stmt.group_by(User.id)
+
+        # Ordering (skip for count)
+        if inactive_last:
+            users_stmt = users_stmt.order_by(
+                User.role, User.is_active.desc(), func.lower(User.username)
+            )
+        else:
+            users_stmt = users_stmt.order_by(User.role, func.lower(User.username))
+
+        # Pagination
+        users_stmt = users_stmt.offset(skip).limit(limit)
+
+        # Resulting users list
+        users_result = await self.db.execute(users_stmt)
+        users_list = list(users_result.tuples().all())
+
+        return users_list, total_count
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Return a single user by ID, or None if not found."""

@@ -15,6 +15,7 @@ from src.api.schemas.validators.users import (
     user_role_exists_validator,
 )
 
+from .enums import UserFilterRole
 from .fields import (
     UsernameField,
     EmailField,
@@ -22,6 +23,7 @@ from .fields import (
     AvatarField,
     RoleField,
     IsActiveField,
+    InactiveLastField,
 )
 
 
@@ -81,3 +83,32 @@ class UserUpdateAdminRequestSchema(UserUpdateRequestSchema):
     username: Optional[str] = UsernameField(optional=True)
     role: Optional[str] = RoleField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
+
+
+class UsersFilterRequestSchema(BaseModel):
+    """Schema for filtering users."""
+
+    username: Optional[str] = UsernameField(
+        optional=True,
+        description=(
+            "Filter by username match "
+            "(optional parameter, case-insensitive partial match search)"
+        ),
+    )
+    email: Optional[EmailStr] = EmailField(
+        optional=True,
+        description=(
+            "Filter by e-mail match "
+            "(optional parameter, case-insensitive partial match search)"
+        ),
+    )
+    role: Optional[UserFilterRole] = RoleField(
+        optional=True,
+        description=("Filter by one of available roles"),
+    )
+    is_active: Optional[bool] = IsActiveField(
+        optional=True,
+        description=("Filter by active status"),
+    )
+
+    inactive_last: bool = InactiveLastField(default=False)

@@ -1,9 +1,8 @@
 """Service layer providing business logic for managing User entities."""
 
-from typing import Optional
+from typing import Optional, Any, Dict, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from libgravatar import Gravatar
 
 from src.db.models import User
@@ -13,6 +12,7 @@ from src.services.dtos import UserDTO
 from src.utils.logger import logger
 from src.utils.security.password_utils import get_password_hash, verify_password
 
+from .dtos import UserWithStatsDTO
 from .errors import (
     BadProvidedDataError,
     InvalidUserCredentialsError,
@@ -74,6 +74,55 @@ class UserService:
             role=role,
             is_active=is_active,
         )
+
+    async def get_all_users(
+        self, requester: UserDTO, pagination: Dict[str, int], filters: Dict[str, Any]
+    ) -> Tuple[list[UserWithStatsDTO], int]:
+        """
+        Return a paginated list of users with contact counts.
+
+        Optional filters may be applied to the search.
+
+        Business logic:
+        - SUPERADMIN sees everyone and all contact counts.
+        - ADMIN sees other admins and users, but contact counts are hidden (None) for admins.
+        """
+
+        # Get all existing users with total users count
+        users_with_contacts_counts, total_count = await self.repo.get_all_users(
+            skip=pagination["skip"],
+            limit=pagination["limit"],
+            **filters,
+            # exclude_user_id=requester.id,  # Option to hide current user in search results
+            requester_role=requester.role,
+        )
+
+        # Check for empty users list
+        if total_count == 0:
+            return [], 0
+
+        # Role-based visibility logic
+        # Show contact counts and other personal info for any user when requester is a SUPERADMIN
+        # Hide contact counts and other personal info for other admins when requester is an ADMIN
+        result: List[UserWithStatsDTO] = []
+        for user, contacts_count in users_with_contacts_counts:
+            # Flag whether to hide additional info from user
+            show_full = (
+                requester.role == UserRole.SUPERADMIN
+                or user.id == requester.id
+                or user.role == UserRole.USER
+            )
+
+            if show_full:
+                result.append(
+                    UserWithStatsDTO.from_orm_with_count(user, contacts_count)
+                )
+            else:
+                result.append(
+                    UserWithStatsDTO.from_orm_with_count(user, None, hide_personal=True)
+                )
+
+        return result, total_count
 
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """Retrieve a user by ID or return None if not exists."""

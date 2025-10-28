@@ -8,7 +8,9 @@ from pydantic import (
 
 
 def UsernameField(  # pylint: disable=invalid-name
-    optional: bool = False, validate: bool = True
+    optional: bool = False,
+    validate: bool = True,
+    description: Optional[str] = None,
 ) -> Any:
     """Construct username field with optional validation and value example"""
     constraints = {}
@@ -17,14 +19,16 @@ def UsernameField(  # pylint: disable=invalid-name
 
     return Field(
         None if optional else ...,
-        description="User username",
+        description=description or "User username",
         **constraints,
         json_schema_extra={"example": "JohnDoe"},
     )
 
 
 def EmailField(  # pylint: disable=invalid-name
-    optional: bool = False, validate: bool = True
+    optional: bool = False,
+    validate: bool = True,
+    description: Optional[str] = None,
 ) -> Any:
     """Construct email field with optional validation and value example"""
     constraints = {}
@@ -33,7 +37,7 @@ def EmailField(  # pylint: disable=invalid-name
 
     return Field(
         None if optional else ...,
-        description="Email address",
+        description=description or "Email address",
         **constraints,
         json_schema_extra={"example": "john.doe@example.com"},
     )
@@ -95,14 +99,30 @@ def RoleField(  # pylint: disable=invalid-name
 
 
 def IsActiveField(  # pylint: disable=invalid-name
-    optional: bool = False, default: Optional[bool] = True
+    optional: bool = False,
+    default: Optional[bool] = True,
+    description: Optional[str] = None,
 ) -> Any:
     """Construct user active status field with value example"""
 
     return Field(
         None if optional else default,
-        description="User active status",
+        description=description or "User active status",
         json_schema_extra={"example": default or True},
+    )
+
+
+def InactiveLastField(  # pylint: disable=invalid-name
+    optional: bool = False,
+    default: Optional[bool] = False,
+    description: Optional[str] = None,
+) -> Any:
+    """Construct flag field to show inactive users last with value example"""
+
+    return Field(
+        None if optional else default,
+        description=description or "Show inactive users last",
+        json_schema_extra={"example": default or False},
     )
 
 

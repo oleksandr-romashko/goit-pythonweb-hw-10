@@ -11,6 +11,7 @@
         "libgravatar",
         "ondelete",
         "onupdate",
+        "outerjoin",
         "passlib",
         "pydantic",
         "redoc",
