@@ -193,8 +193,10 @@ class ContactsRepository:
         if contact is None:
             return None
 
+        valid_columns = {column.name for column in Contact.__table__.columns}
         for key, value in fields.items():
-            setattr(contact, key, value)
+            if key in valid_columns:
+                setattr(contact, key, value)
 
         await self.db.commit()
         await self.db.refresh(contact)

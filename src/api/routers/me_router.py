@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, status
 from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import UserService, ContactService
-from src.services.dtos import UserDTO
+from src.services.dtos import UserDTO, UserWithStatsDTO
 from src.services.errors import (
     InvalidUserCredentialsError,
     BadProvidedDataError,
@@ -104,8 +104,10 @@ async def update_me(
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
     """Partially update current user information."""
     try:
-        orm_user: Optional[User] = await user_service.update_user(
-            UserDTO.from_orm(user), **body.model_dump()
+        updated_user_dto: Optional[UserWithStatsDTO] = (
+            await user_service.update_current_user(
+                UserDTO.from_orm(user), **body.model_dump()
+            )
         )
     except InvalidUserCredentialsError as exc:
         raise_http_403_error(str(exc))
@@ -117,10 +119,10 @@ async def update_me(
         raise_http_409_error(detail=exc.errors)
 
     # Edge case - user has been just deleted
-    if orm_user is None:
+    if updated_user_dto is None:
         raise_http_401_error("User not authenticated or removed")
 
-    response = UserAboutMeAdminResponseSchema.model_validate(orm_user)
+    response = UserAboutMeAdminResponseSchema.model_validate(updated_user_dto.to_dict())
 
     # Add number of user contacts to the response
     response.contacts_count = await contacts_service.get_contacts_count(user.id)

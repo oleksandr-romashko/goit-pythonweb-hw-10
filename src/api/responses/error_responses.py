@@ -16,6 +16,7 @@ from src.api.schemas.errors import (
     UserIsInactiveErrorResponse,
     BadRequestErrorResponse,
     AccessDeniedErrorResponse,
+    AccessDeniedInvalidRoleErrorResponse,
     ContactNotFoundErrorResponse,
     UserNotFoundErrorResponse,
     UsernameIsReservedErrorResponse,
@@ -86,17 +87,37 @@ ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES: Dict = {
     **ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,  # inherit 401/403 errors of a regular active user
     403: {
         "description": "Forbidden - Not active user or access denied",
-        "model": Union[UserIsInactiveErrorResponse, AccessDeniedErrorResponse],
+        "model": AccessDeniedErrorResponse,
         "content": {
             "application/json": {
                 "examples": {
-                    "User is inactive": {
-                        "summary": "Example for inactive user",
-                        "value": UserIsInactiveErrorResponse.generate_example_recursive(),
-                    },
                     "Access denied": {
                         "summary": "Example for access denied",
                         "value": AccessDeniedErrorResponse.generate_example_recursive(),
+                    },
+                }
+            }
+        },
+    },
+}
+
+ON_USER_FORBIDDEN_OR_ROLE_IS_INVALID_RESPONSE: Dict = {
+    403: {
+        "description": "Forbidden - Role is invalid or access denied",
+        "model": Union[
+            AccessDeniedErrorResponse,
+            AccessDeniedInvalidRoleErrorResponse,
+        ],
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Access denied": {
+                        "summary": "Example for access denied",
+                        "value": AccessDeniedErrorResponse.generate_example_recursive(),
+                    },
+                    "User role is invalid": {
+                        "summary": "Example for user role is invalid",
+                        "value": AccessDeniedInvalidRoleErrorResponse.generate_example_recursive(),
                     },
                 }
             }

@@ -75,14 +75,23 @@ class UserUpdateRequestSchema(BaseModel):
     )
     avatar: Optional[str] = AvatarField(optional=True)
 
+    class Config:
+        extra = "forbid"
 
+
+@at_least_one_field_required_validator
 @user_role_exists_validator
-class UserUpdateAdminRequestSchema(UserUpdateRequestSchema):
+class UserUpdateAdminRequestSchema(BaseModel):
     """Schema for updating existing user by admin user."""
 
     username: Optional[str] = UsernameField(optional=True)
-    role: Optional[str] = RoleField(optional=True)
+    email: Optional[EmailStr] = EmailField(optional=True)
+    avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
+    role: Optional[str] = RoleField(optional=True)
+
+    class Config:
+        extra = "forbid"
 
 
 class UsersFilterRequestSchema(BaseModel):

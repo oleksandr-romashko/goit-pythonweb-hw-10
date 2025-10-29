@@ -86,7 +86,7 @@ class UsersRepository:
 
         # Hide from admin user other inactive admins
         if requester_role == UserRole.ADMIN:
-            filters.append(~((User.role == UserRole.ADMIN) & (User.is_active == False)))
+            filters.append(~((User.role == UserRole.ADMIN) & (User.is_active is False)))
 
         # Optional filters
 
@@ -163,8 +163,10 @@ class UsersRepository:
         if user is None:
             return None
 
+        valid_columns = {column.name for column in User.__table__.columns}
         for key, value in fields.items():
-            setattr(user, key, value)
+            if key in valid_columns:
+                setattr(user, key, value)
 
         await self.db.commit()
         await self.db.refresh(user)
