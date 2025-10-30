@@ -21,6 +21,7 @@ from src.api.dependencies import (
 from src.api.errors import raise_http_404_error
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
+    ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE,
     ON_CONTACT_NOT_FOUND_RESPONSE,
 )
 from src.api.schemas.contacts.requests import (
@@ -167,10 +168,11 @@ async def get_single_contact_by_id(
 
 @router.put(
     "/{contact_id}",
-    summary="Update contact by ID (entirely)",
+    summary="Update contact by ID (update entirely by overwriting)",
     description=(
-        "Fully update an existing contact by its unique identifier. "
-        "Requires all contact fields. Overwrites all fields."
+        "Fully update an existing contact by its unique identifier.\n\n"
+        "Requires all contact fields. Overwrites all fields.\n\n<br>"
+        "*Note*: for partial contact update, please user ***PUT*** method."
     ),
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
@@ -196,7 +198,7 @@ async def overwrite_contact(
 
 @router.patch(
     "/{contact_id}",
-    summary="Update contact (partially)",
+    summary="Update contact by ID (update partially)",
     description=(
         "Update only some provided fields of an existing contact.\n\n<br>"
         "All fields are optional, but at least one field should be provided."
@@ -204,7 +206,7 @@ async def overwrite_contact(
     response_model=ContactResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully updated user contact.",
-    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
+    responses={**ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE, **ON_CONTACT_NOT_FOUND_RESPONSE},
 )
 async def update_contact(
     body: ContactOptionalRequestSchema,

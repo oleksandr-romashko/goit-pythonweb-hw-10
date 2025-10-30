@@ -31,7 +31,9 @@ from src.api.errors import (
     raise_http_409_error,
 )
 from src.api.responses.error_responses import ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES
-from src.api.responses.error_responses import ON_BAD_REQUEST_RESPONSE
+from src.api.responses.error_responses import (
+    ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES,
+)
 from src.api.responses.success_responses import ON_ME_SUCCESS_RESPONSE
 from src.api.schemas.users.requests import UserUpdateRequestSchema
 from src.api.schemas.users.responses import (
@@ -39,11 +41,11 @@ from src.api.schemas.users.responses import (
     UserAboutMeAdminResponseSchema,
 )
 
-# TODO: Evaluate adding DELETE /me — delete your account
-# Add additional single action routes:
-# TODO:    PATCH /me/password — solely password change
-# TODO:    PATCH /me/avatar — solely avatar change
-# TODO:    PATCH /me/email — solely email change
+# TODO: Add additional single action routes:
+# * PATCH /me/password — solely password change
+# * PATCH /me/avatar — solely avatar change
+# * PATCH /me/email — solely email change
+# TODO: Evaluate adding DELETE for /me or /me/delete — self-delete your account (anonymize data?)
 
 router = APIRouter(
     prefix="/users/me",
@@ -67,21 +69,19 @@ async def get_me(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
     """Return current user information."""
-    data = UserAboutMeAdminResponseSchema.model_validate(user)
+    response_data = UserAboutMeAdminResponseSchema.model_validate(user)
 
     # Add contacts count
-    data.contacts_count = await contacts_service.get_contacts_count(user.id)
+    response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
     # Return full contact data for admin users
     if user.role in {UserRole.ADMIN, UserRole.SUPERADMIN}:
-        return data
+        return response_data
 
-    # For non-admin users - sanitize some fields values by setting them to None
-    data.role = None
-    data.created_at = None
-    data.updated_at = None
+    # Sanitize some fields values for non-admin users
+    response_data = _sanitize_non_admin_response(response_data)
 
-    return UserAboutMeResponseSchema.model_validate(data)
+    return UserAboutMeResponseSchema.model_validate(response_data)
 
 
 @router.patch(
@@ -94,7 +94,10 @@ async def get_me(
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
     response_description="Successfully updated user contact.",
-    responses={**ON_ME_SUCCESS_RESPONSE, **ON_BAD_REQUEST_RESPONSE},
+    responses={
+        **ON_ME_SUCCESS_RESPONSE,
+        **ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES,
+    },
 )
 async def update_me(
     body: UserUpdateRequestSchema,
@@ -122,18 +125,33 @@ async def update_me(
     if updated_user_dto is None:
         raise_http_401_error("User not authenticated or removed")
 
-    response = UserAboutMeAdminResponseSchema.model_validate(updated_user_dto.to_dict())
+    response_data = UserAboutMeAdminResponseSchema.model_validate(
+        updated_user_dto.to_dict()
+    )
 
     # Add number of user contacts to the response
-    response.contacts_count = await contacts_service.get_contacts_count(user.id)
+    response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
     # Return full contact data for admin users
     if user.role in {UserRole.ADMIN, UserRole.SUPERADMIN}:
-        return response
+        return response_data
 
-    # For non-admin users - sanitize some fields values by setting them to None
-    response.role = None
-    response.created_at = None
-    response.updated_at = None
+    # Sanitize some fields values for non-admin users
+    response_data = _sanitize_non_admin_response(response_data)
 
-    return UserAboutMeResponseSchema.model_validate(response)
+    return UserAboutMeResponseSchema.model_validate(response_data)
+
+
+def _sanitize_non_admin_response(
+    data: UserAboutMeAdminResponseSchema,
+) -> UserAboutMeAdminResponseSchema:
+    """
+    Hide some fields values for non-admin users by setting them to None
+
+    This will allow for sensitive data not to be shown in the response
+    """
+    data.role = None
+    data.created_at = None
+    data.updated_at = None
+
+    return data

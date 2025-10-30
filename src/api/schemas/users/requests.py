@@ -76,6 +76,8 @@ class UserUpdateRequestSchema(BaseModel):
     avatar: Optional[str] = AvatarField(optional=True)
 
     class Config:
+        """Additional model config to forbid adding extra fields"""
+
         extra = "forbid"
 
 
@@ -91,6 +93,8 @@ class UserUpdateAdminRequestSchema(BaseModel):
     role: Optional[str] = RoleField(optional=True)
 
     class Config:
+        """Additional model config to forbid adding extra fields"""
+
         extra = "forbid"
 
 

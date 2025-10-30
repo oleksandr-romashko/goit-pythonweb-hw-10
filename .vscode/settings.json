@@ -18,6 +18,7 @@
         "sessionmaker",
         "sqlalchemy",
         "superadmin",
+        "superadmins",
         "uvicorn"
     ]
 }
