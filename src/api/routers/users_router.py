@@ -18,7 +18,7 @@ from src.services.errors import (
 from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
-    MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED,
+    MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
 )
 
 from src.api.dependencies import (
@@ -29,7 +29,9 @@ from src.api.dependencies import (
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES,
     ON_USER_FORBIDDEN_OR_ROLE_IS_INVALID_RESPONSE,
-    ON_USER_NOT_FOUND_RESPONSE,
+    ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE,
+    ON_USER_NOT_FOUND_OR_VIEW_RESTRICTED_RESPONSE,
+    ON_USER_NOT_FOUND_OR_DELETE_RESTRICTED_RESPONSE,
 )
 from src.api.responses.success_responses import ON_GET_USER_BY_ID_SUCCESS_RESPONSE
 from src.api.schemas.pagination import (
@@ -56,9 +58,13 @@ router = APIRouter(
 )
 
 
+# TODO: PATCH /users/{id}/* — separate simple endpoints to edit user:
+# * role, active status, block, etc.
+
+
 @router.post(
     "/",
-    summary="Create a new user manually (users by admins and admins/users by superadmin)",
+    summary="Create a new user",
     description=(
         "Accessible only for admin and superadmin users.\n\n"
         "- **Admin** can only create users with role '*User*'.\n"
@@ -171,7 +177,10 @@ async def get_all_users(
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
     response_description="Successfully retrieved user details.",
-    responses={**ON_GET_USER_BY_ID_SUCCESS_RESPONSE, **ON_USER_NOT_FOUND_RESPONSE},
+    responses={
+        **ON_GET_USER_BY_ID_SUCCESS_RESPONSE,
+        **ON_USER_NOT_FOUND_OR_VIEW_RESTRICTED_RESPONSE,
+    },
 )
 async def get_user_by_id(
     user_id: int,
@@ -191,10 +200,10 @@ async def get_user_by_id(
             requester=requester_dto, user_id=user_id, contacts_service=contacts_service
         )
     except UserViewPermissionError:
-        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
     if not user_dto:
-        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
     return UserAdminRegisteredUserResponseSchema.model_validate(user_dto.to_dict())
 
@@ -213,7 +222,8 @@ async def get_user_by_id(
     response_model_exclude_none=True,
     responses={
         **ON_USER_FORBIDDEN_OR_ROLE_IS_INVALID_RESPONSE,
-        **ON_USER_NOT_FOUND_RESPONSE,
+        **ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE,
+        **ON_USER_NOT_FOUND_OR_VIEW_RESTRICTED_RESPONSE,
     },
 )
 async def patch_user(
@@ -244,9 +254,64 @@ async def patch_user(
             f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"
         )
     except UserViewPermissionError:
-        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
     if not updated_dto:
-        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED)
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
     return UserAdminRegisteredUserResponseSchema.model_validate(updated_dto.to_dict())
+
+
+@router.delete(
+    "/{user_id}",
+    summary="Delete a user",
+    description=(
+        "Delete an existing user by their ID.\n\n"
+        "Accessible only for **Admin** and **Superadmin**.\n\n"
+        "- **Superadmin** can delete any user except themselves and other superadmins.\n"
+        "- **Admin** can delete only regular users (not themselves, not other admins "
+        "or superadmins).\n"
+        "- **Users** cannot delete anyone.\n\n"
+        "⚠️ The operation performs a **permanent deletion** (not soft delete)."
+    ),
+    status_code=status.HTTP_200_OK,
+    response_model=UserAdminRegisteredUserResponseSchema,
+    response_model_exclude_none=True,
+    response_description="Successfully deleted the user.",
+    responses={
+        **ON_USER_FORBIDDEN_OR_ROLE_IS_INVALID_RESPONSE,
+        **ON_USER_NOT_FOUND_OR_DELETE_RESTRICTED_RESPONSE,
+    },
+)
+async def delete_user(
+    user_id: int,
+    user: User = Depends(get_current_active_admin_user),
+    user_service: UserService = Depends(get_user_service),
+    contacts_service: ContactService = Depends(get_contacts_service),
+) -> UserAdminRegisteredUserResponseSchema:
+    """
+    Delete a specific user by ID.
+
+    Accessible only by admin and superadmin.
+
+    Returns the deleted user's data (for confirmation/logging purposes).
+    """
+    requester_dto = UserDTO.from_orm(user)
+
+    try:
+        deleted_dto = await user_service.delete_user_by_admin(
+            requester=requester_dto,
+            user_id=user_id,
+            contacts_service=contacts_service,
+        )
+    except UserRolePermissionError as exc:
+        raise_http_403_error(
+            f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"
+        )
+
+    if not deleted_dto:
+        raise_http_404_error(
+            raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
+        )
+
+    return UserAdminRegisteredUserResponseSchema.model_validate(deleted_dto.to_dict())
