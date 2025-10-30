@@ -41,14 +41,16 @@ class AuthService:
         )
         return token_data["token"]
 
-    def decode_access_token(self, token: str) -> Dict[str, Any]:
+    def decode_access_token(
+        self, token: str, *, enforce_numeric_sub: bool = True
+    ) -> Dict[str, Any]:
         """
         Decode and validate JWT access token.
 
         Ensures:
         - Token is valid and not expired
         - Audience includes 'auth' and 'access'
-        - Subject ('sub') is a numeric user ID
+        - Subject ('sub') is a numeric user ID with check if enforce_numeric_sub = True
 
         Returns:
             Dict[str, Any]: Decoded JWT payload containing user claims.
@@ -70,9 +72,9 @@ class AuthService:
         if subject_claim is None:
             raise InvalidAccessTokenError("Token has no subject ('sub') claim")
 
-        if not subject_claim.isdigit():
+        if enforce_numeric_sub and not subject_claim.isdigit():
             raise InvalidAccessTokenError(
-                "Access token subject ('sub') claim, should be an integer"
+                "Access token subject ('sub') claim must be numeric"
             )
 
         return payload
