@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Contact
 from src.db.repository import ContactsRepository
+from src.utils.query_helpers import get_pagination
 
 
 class ContactService:
@@ -29,8 +30,9 @@ class ContactService:
             return [], 0
 
         # Get all existing contacts
+        skip, limit = get_pagination(pagination)
         contacts: List[Contact] = await self.repo.get_all_contacts(
-            user_id, skip=pagination["skip"], limit=pagination["limit"], **filters
+            user_id, skip, limit, **filters
         )
 
         return contacts, total_count
@@ -43,9 +45,8 @@ class ContactService:
         self, user_id: int, pagination: Dict[str, int]
     ) -> Tuple[List[Dict], int]:
         """Return a paginated list of contacts with upcoming birthdays."""
-        return await self.repo.get_contacts_upcoming_birthdays(
-            user_id, pagination["skip"], pagination["limit"]
-        )
+        skip, limit = get_pagination(pagination)
+        return await self.repo.get_contacts_upcoming_birthdays(user_id, skip, limit)
 
     async def get_contact_by_id(
         self, user_id: int, contact_id: int
