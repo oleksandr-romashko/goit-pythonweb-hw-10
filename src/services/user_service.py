@@ -10,6 +10,7 @@ from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.services.dtos import UserDTO
 from src.utils.logger import logger
+from src.utils.query_helpers import get_pagination
 from src.utils.security.password_utils import get_password_hash, verify_password
 
 from .contact_service import ContactService
@@ -116,9 +117,10 @@ class UserService:
         """
 
         # Get all existing users with total users count
+        skip, limit = get_pagination(pagination)
         users_with_contacts_counts, total_count = await self.repo.get_all_users(
-            skip=pagination["skip"],
-            limit=pagination["limit"],
+            skip,
+            limit,
             **filters,
             # exclude_user_id=requester.id,  # Option to hide current user in search results
             requester_role=requester.role,
@@ -433,6 +435,78 @@ class UserService:
         # 5. Return updated user (DTO with contacts_count)
         contacts_count = await contacts_service.get_contacts_count(user.id)
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
+
+    async def delete_user_by_admin(
+        self,
+        requester: UserDTO,
+        user_id: int,
+        contacts_service: Optional[ContactService] = None,
+    ) -> Optional[UserWithStatsDTO]:
+        """
+        Delete a user by admin or superadmin, with strict role-based rules.
+
+        Rules:
+        - SUPERADMIN can delete any user except themselves and other SUPERADMINs.
+        - ADMIN can delete only regular USERs, not themselves or other admins.
+        - USERs cannot delete anyone.
+
+        Raises:
+            UserRolePermissionError: if requester is not allowed to delete the target user.
+        """
+        # 1. Fetch the target user
+
+        user = await self.repo.get_user_by_id(user_id)
+        if not user:
+            return None
+
+        # 2. Prevent self-deletion
+
+        if requester.id == user.id:
+            raise UserRolePermissionError("Users cannot delete themselves")
+
+        # 3. Role-based restrictions
+
+        # 3.1 User cannot delete anyone
+        if requester.role == UserRole.USER:
+            raise UserRolePermissionError(
+                "Regular users are not allowed to delete users"
+            )
+
+        # 3.2 Superadmin restrictions
+        if requester.role == UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
+            raise UserRolePermissionError("Superadmin cannot delete another superadmin")
+
+        # 3.3 Admin restrictions
+        if requester.role == UserRole.ADMIN and user.role in {
+            UserRole.ADMIN,
+            UserRole.SUPERADMIN,
+        }:
+            raise UserRolePermissionError("Admins cannot delete admins or superadmins")
+
+        # 4. Get contacts count before deletion
+
+        contacts_count = (
+            await contacts_service.get_contacts_count(user.id)
+            if contacts_service
+            else None
+        )
+
+        # 5. Perform deletion
+
+        deleted_user = await self.repo.remove_user_by_id(user.id)
+        if not deleted_user:
+            return None
+
+        # 6. Logging
+
+        logger.info("%s deleted user %s", requester, UserDTO.from_orm(user))
+
+        # 7. Return deleted user info with stats
+        return UserWithStatsDTO.from_orm_with_count(
+            deleted_user,
+            contacts_count,
+            hide_personal=True,
+        )
 
     async def _create_user_common(
         self,
