@@ -7,10 +7,11 @@ from src.utils.constants import (
     MESSAGE_ERROR_NOT_AUTHENTICATED,
     MESSAGE_ERROR_INVALID_AUTH_TOKEN,
     MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS,
+    MESSAGE_ERROR_BAD_REQUEST_EMPTY,
     MESSAGE_ERROR_ACCESS_DENIED,
     MESSAGE_ERROR_INACTIVE_USER,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
-    MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED,
+    MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
     MESSAGE_ERROR_CONTACT_NOT_FOUND,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
@@ -24,16 +25,24 @@ class ErrorResponse(ExampleGenerationMixin, BaseModel):
     """Common error parent."""
 
 
-class BadRequestErrorResponse(ErrorResponse):
-    """Error for 400 Bad Request when provided values are incorrect or improper."""
+class BadEmptyValuesRequestErrorResponse(ErrorResponse):
+    """Error for 400 Bad Request when no values are provided for the update."""
+
+    detail: str = Field(
+        json_schema_extra={
+            "example": MESSAGE_ERROR_BAD_REQUEST_EMPTY,
+        },
+    )
+
+
+class BadMeValuesRequestErrorResponse(ErrorResponse):
+    """Error for 400 Bad Request when provided update values for me are incorrect or improper."""
 
     detail: str = Field(
         json_schema_extra={
             "example": {
-                "detail": {
-                    "password": "New password can't be the same as the old one",
-                    "email": "New email can't be the same as the current one",
-                }
+                "password": "New password can't be the same as the old one",
+                "email": "New email can't be the same as the current one",
             },
         },
     )
@@ -102,7 +111,7 @@ class UserNotFoundErrorResponse(ErrorResponse):
 
     detail: str = Field(
         json_schema_extra={
-            "example": MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED
+            "example": MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED
         },
     )
 

@@ -4,6 +4,9 @@ from typing import Type
 
 from pydantic import BaseModel, model_validator
 
+from src.api.errors.http_errors import raise_http_400_error
+from src.utils.constants import MESSAGE_ERROR_BAD_REQUEST_EMPTY
+
 
 def at_least_one_field_required_validator(cls: Type[BaseModel]) -> Type[BaseModel]:
     """
@@ -19,7 +22,7 @@ def at_least_one_field_required_validator(cls: Type[BaseModel]) -> Type[BaseMode
         @classmethod
         def _check_at_least_one_field(cls, values):
             if not any(value is not None for value in values.values()):
-                raise ValueError("At least one field must be provided.")
+                raise_http_400_error(MESSAGE_ERROR_BAD_REQUEST_EMPTY)
             return values
 
     return Wrapper

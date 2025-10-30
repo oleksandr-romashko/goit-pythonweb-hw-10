@@ -8,13 +8,15 @@ from src.utils.constants import (
     MESSAGE_ERROR_DB_INVALID_CONFIG,
     MESSAGE_ERROR_USER_NOT_FOUND,
     MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED,
+    MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED,
 )
 
 from src.api.schemas.errors import (
     ImproperTokenErrorResponse,
     InvalidTokenCredentialsErrorResponse,
     UserIsInactiveErrorResponse,
-    BadRequestErrorResponse,
+    BadEmptyValuesRequestErrorResponse,
+    BadMeValuesRequestErrorResponse,
     AccessDeniedErrorResponse,
     AccessDeniedInvalidRoleErrorResponse,
     ContactNotFoundErrorResponse,
@@ -24,21 +26,39 @@ from src.api.schemas.errors import (
     InternalServerErrorResponse,
 )
 
-ON_BAD_REQUEST_RESPONSE: Dict = {
+ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE: Dict = {
     400: {
-        "model": BadRequestErrorResponse,
         "description": MESSAGE_ERROR_BAD_REQUEST,
+        "model": BadEmptyValuesRequestErrorResponse,
         "content": {
             "application/json": {
                 "examples": {
+                    "Body is empty": {
+                        "summary": "At least one field is required",
+                        "value": BadEmptyValuesRequestErrorResponse.generate_example_recursive(),
+                    },
+                },
+            }
+        },
+    },
+}
+
+ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES: Dict = {
+    400: {
+        "description": MESSAGE_ERROR_BAD_REQUEST,
+        "model": Union[
+            BadEmptyValuesRequestErrorResponse, BadMeValuesRequestErrorResponse
+        ],
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Body is empty": {
+                        "summary": "At least one field is required",
+                        "value": BadEmptyValuesRequestErrorResponse.generate_example_recursive(),
+                    },
                     "Bad request values": {
                         "summary": "Combined details on bad password and email fields",
-                        "value": {
-                            "detail": {
-                                "password": "New password can't be the same as the old one",
-                                "email": "New email can't be the same as the current one",
-                            }
-                        },
+                        "value": BadMeValuesRequestErrorResponse.generate_example_recursive(),
                     },
                 },
             }
@@ -132,10 +152,20 @@ ON_CONTACT_NOT_FOUND_RESPONSE: Dict = {
     }
 }
 
-ON_USER_NOT_FOUND_RESPONSE: Dict = {
+ON_USER_NOT_FOUND_OR_VIEW_RESTRICTED_RESPONSE: Dict = {
     404: {
         "model": UserNotFoundErrorResponse,
         "description": f"{MESSAGE_ERROR_USER_NOT_FOUND} or {MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED}",
+    }
+}
+
+ON_USER_NOT_FOUND_OR_DELETE_RESTRICTED_RESPONSE: Dict = {
+    404: {
+        "model": UserNotFoundErrorResponse,
+        "description": (
+            f"{MESSAGE_ERROR_USER_NOT_FOUND} "
+            f"or {MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED}"
+        ),
     }
 }
 

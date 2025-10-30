@@ -23,9 +23,11 @@ MESSAGE_ERROR_ADMIN_CANNOT_CREATE_ADMIN = (
 )
 
 MESSAGE_ERROR_BAD_REQUEST = "Bad request"
+MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for update"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
 MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
+
 
 MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be used."
 
@@ -35,6 +37,7 @@ MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
 MESSAGE_ERROR_USER_NOT_FOUND = "User not found"
 MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED = "User view is restricted"
-MESSAGE_ERROR_USER_NOT_FOUND_OR_VIEW_IS_NOT_ALLOWED = (
-    "User does not exist or you are not allowed to view this user"
+MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED = "User deletion is restricted"
+MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED = (
+    "User does not exist or you are not allowed to perform this action with this user"
 )
