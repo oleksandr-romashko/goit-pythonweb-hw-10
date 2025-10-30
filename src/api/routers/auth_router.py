@@ -77,7 +77,7 @@ async def register_user(
     logger.info(
         "Created a new user with id = %s and username '%s'.", user.id, user.username
     )
-    response.headers["Location"] = "api/users/me"
+    response.headers["Location"] = "/api/users/me"
     return data
 
 
