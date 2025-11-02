@@ -5,16 +5,16 @@ from pydantic import BaseModel, Field
 
 from src.utils.constants import (
     MESSAGE_ERROR_NOT_AUTHENTICATED,
-    MESSAGE_ERROR_INVALID_AUTH_TOKEN,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS,
     MESSAGE_ERROR_BAD_REQUEST_EMPTY,
     MESSAGE_ERROR_ACCESS_DENIED,
     MESSAGE_ERROR_INACTIVE_USER,
-    MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
     MESSAGE_ERROR_CONTACT_NOT_FOUND,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
+    MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED,
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
 )
 
@@ -60,7 +60,7 @@ class ImproperTokenErrorResponse(ErrorResponse):
     """Error for 401 Unauthorized when a JWT token can't be processed."""
 
     detail: str = Field(
-        json_schema_extra={"example": MESSAGE_ERROR_INVALID_AUTH_TOKEN},
+        json_schema_extra={"example": MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN},
     )
 
 
@@ -93,7 +93,7 @@ class AccessDeniedInvalidRoleErrorResponse(ErrorResponse):
 
     detail: str = Field(
         json_schema_extra={
-            "example": f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: <details message>"
+            "example": f"{MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED}: <details message>"
         },
     )
 
@@ -150,4 +150,12 @@ class InternalServerErrorResponse(ErrorResponse):
 
     detail: str = Field(
         json_schema_extra={"example": MESSAGE_ERROR_INTERNAL_SERVER_ERROR}
+    )
+
+
+class NotImplementedServerErrorResponse(ErrorResponse):
+    """Error for 501 Not Implemented Yet server issue."""
+
+    detail: str = Field(
+        json_schema_extra={"example": MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED}
     )
