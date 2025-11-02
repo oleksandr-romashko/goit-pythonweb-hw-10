@@ -3,12 +3,13 @@
 from typing import Dict, Union
 
 from src.utils.constants import (
+    MESSAGE_ERROR_DB_INVALID_CONFIG,
     MESSAGE_ERROR_BAD_REQUEST,
     MESSAGE_ERROR_CONTACT_NOT_FOUND,
-    MESSAGE_ERROR_DB_INVALID_CONFIG,
     MESSAGE_ERROR_USER_NOT_FOUND,
     MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED,
     MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED,
+    MESSAGE_ERROR_FEATURE_IS_PLANNED,
 )
 
 from src.api.schemas.errors import (
@@ -24,6 +25,7 @@ from src.api.schemas.errors import (
     UsernameIsReservedErrorResponse,
     ResourceAlreadyExistsDictErrorResponse,
     InternalServerErrorResponse,
+    NotImplementedServerErrorResponse,
 )
 
 ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE: Dict = {
@@ -196,5 +198,12 @@ ON_INTERNAL_SERVER_ERROR_RESPONSE: Dict = {
     500: {
         "model": InternalServerErrorResponse,
         "description": f"{MESSAGE_ERROR_DB_INVALID_CONFIG} or error connecting to the database",
+    },
+}
+
+ON_NOT_IMPLEMENTED_SERVER_ERROR_RESPONSE: Dict = {
+    501: {
+        "model": NotImplementedServerErrorResponse,
+        "description": MESSAGE_ERROR_FEATURE_IS_PLANNED,
     },
 }
