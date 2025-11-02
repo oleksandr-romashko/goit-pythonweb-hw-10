@@ -310,8 +310,6 @@ async def delete_user(
         )
 
     if not deleted_dto:
-        raise_http_404_error(
-            raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
-        )
+        raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
     return UserAdminRegisteredUserResponseSchema.model_validate(deleted_dto.to_dict())
