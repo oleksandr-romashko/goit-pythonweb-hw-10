@@ -9,11 +9,16 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config import app_config
 from src.db.models import User
-from src.services import AuthService, UserService, ContactService
-from src.services.errors import UserConflictError, InvalidUserCredentialsError
+from src.services import AuthService, UserService, ContactService, TokenType
+from src.services.errors import (
+    UserConflictError,
+    InvalidUserCredentialsError,
+    InvalidTokenError,
+)
 from src.utils.constants import (
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
 )
 from src.utils.logger import logger
 
@@ -25,7 +30,11 @@ from src.api.dependencies import (
 )
 from src.api.errors import raise_http_401_error, raise_http_409_error
 from src.api.responses.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
-from src.api.schemas.auth import AccessTokenResponseSchema
+from src.api.schemas.auth import (
+    RefreshTokenRequestSchema,
+    AccessTokenResponseSchema,
+    LoginTokenResponseSchema,
+)
 from src.api.schemas.users.requests import (
     UserRegisterRequestSchema,
     UserLoginRequestSchema,
@@ -88,7 +97,7 @@ async def register_user(
         "Authenticate user based on `username` and `password` in the request body "
         "and return a valid JWT access token."
     ),
-    response_model=AccessTokenResponseSchema,
+    response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully authenticated user.",
 )
@@ -96,7 +105,7 @@ async def login_user(
     body: UserLoginRequestSchema,
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
-) -> AccessTokenResponseSchema:
+) -> LoginTokenResponseSchema:
     """Validate user credentials using request body and issue access token."""
     return await _authenticate_and_issue_token(
         body.username, body.password, auth_service, user_service
@@ -110,7 +119,7 @@ async def login_user(
         "Authenticate user based on OAuth2 login scheme "
         "and return a valid JWT access token."
     ),
-    response_model=AccessTokenResponseSchema,
+    response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully authenticated user.",
 )
@@ -118,10 +127,68 @@ async def oauth2_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
-) -> AccessTokenResponseSchema:
+) -> LoginTokenResponseSchema:
     """Validate user credentials using OAuth2 scheme and issue access token."""
     return await _authenticate_and_issue_token(
         form_data.username, form_data.password, auth_service, user_service
+    )
+
+
+@router.post(
+    "/refresh",
+    summary="Issue access token based on valid refresh token.",
+    response_model=AccessTokenResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successfully issued a new access token.",
+)
+async def refresh_access_token(
+    body: RefreshTokenRequestSchema,
+    auth_service: AuthService = Depends(get_auth_service),
+    user_service: UserService = Depends(get_user_service),
+) -> AccessTokenResponseSchema:
+    """Issue access token based on refresh token."""
+    try:
+        refresh_token_data = auth_service.decode_token(
+            body.refresh_token.get_secret_value(),
+            TokenType.REFRESH,
+            enforce_numeric_sub=True,
+        )
+    except InvalidTokenError:
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+
+    user_id = int(refresh_token_data["sub"])
+    token_id = refresh_token_data["jti"]
+
+    user = await user_service.get_user_by_id(user_id)
+    if not user:
+        logger.warning(
+            "Failed to validate refresh token (jti=%s): User with id=%s does not exists",
+            token_id,
+            user_id,
+        )
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+
+    is_active_user = user.is_active
+    if not is_active_user:
+        logger.warning(
+            "Refresh token (jti=%s) used by inactive user_id=%s",
+            token_id,
+            user_id,
+        )
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+
+    access_token = auth_service.create_token(user_id, TokenType.ACCESS)
+
+    logger.info(
+        "Refresh token jti=%s validated successfully for %s user with user_id=%s",
+        token_id,
+        "active" if is_active_user else "deactivated",
+        user_id,
+    )
+
+    return AccessTokenResponseSchema(
+        access_token=access_token,
+        token_type="bearer",
     )
 
 
@@ -130,7 +197,7 @@ async def _authenticate_and_issue_token(
     password: str,
     auth_service: AuthService,
     user_service: UserService,
-) -> AccessTokenResponseSchema:
+) -> LoginTokenResponseSchema:
     """Process user credentials and issue access token"""
     # Check user credentials
     try:
@@ -143,14 +210,22 @@ async def _authenticate_and_issue_token(
         )
         raise_http_401_error(MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS)
 
-    # Generate access token
-    token = auth_service.create_access_token(user.id)
+    # Generate access and refresh tokens
+    access_token = auth_service.create_token(user.id, TokenType.ACCESS)
+    refresh_token = auth_service.create_token(user.id, TokenType.REFRESH)
 
-    logger.info(
-        "Issued access token to user with username '%s' after login authentication.",
+    logger.debug(
+        (
+            "User(id=%d, username=%s, role=%s, is_active=%s) "
+            "authenticated successfully, issued with access and refresh tokens."
+        ),
+        user.id,
         user.username,
+        user.role,
+        user.is_active,
     )
-    return AccessTokenResponseSchema(
-        access_token=token,
+    return LoginTokenResponseSchema(
+        access_token=access_token,
+        refresh_token=refresh_token,
         token_type="bearer",
     )

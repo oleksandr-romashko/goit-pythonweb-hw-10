@@ -41,14 +41,16 @@ class Config:
             "❌ AUTH_JWT_SECRET environment variable is not set. "
             "Please define it before running the application."
         )
-    AUTH_JWT_EXPIRATION_SECONDS = int(
+    AUTH_JWT_ACCESS_EXPIRATION_SECONDS = int(
         os.getenv("AUTH_JWT_EXPIRATION_SECONDS", default="3600")
+    )
+    AUTH_JWT_REFRESH_EXPIRATION_SECONDS = int(
+        os.getenv("AUTH_JWT_REFRESH_EXPIRATION_SECONDS", default="604800")
     )
     AUTH_JWT_ALGORITHM = os.getenv("AUTH_JWT_ALGORITHM", default="HS256")
 
     # Usernames
     SUPERADMIN_USERNAME = os.getenv("AUTH_SUPERADMIN_USERNAME", default="superadmin")
-    ADMIN_USERNAME = os.getenv("AUTH_ADMIN_USERNAME", default="admin")
 
     RESERVED_USERNAMES: set[str] = {
         "admin",
@@ -66,10 +68,7 @@ class Config:
     @property
     def effective_reserved_usernames(self) -> set[str]:
         """Return reserved usernames excluding system admin accounts."""
-        return self.RESERVED_USERNAMES - {
-            self.SUPERADMIN_USERNAME.lower(),
-            self.ADMIN_USERNAME.lower(),
-        }
+        return self.RESERVED_USERNAMES - {self.SUPERADMIN_USERNAME.lower()}
 
     # Domain logic settings
 
