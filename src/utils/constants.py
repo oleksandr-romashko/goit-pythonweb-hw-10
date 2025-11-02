@@ -11,7 +11,7 @@ MESSAGE_ERROR_DB_INVALID_CONFIG = "Database is not configured correctly"
 
 MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS = "Invalid username or password"
 MESSAGE_ERROR_NOT_AUTHENTICATED = "Not authenticated"
-MESSAGE_ERROR_INVALID_AUTH_TOKEN = "Invalid or missing JWT token"
+MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN = "Invalid or expired refresh token"
 MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS = "Invalid authentication credentials"
 MESSAGE_ERROR_INACTIVE_USER = "Inactive user"
 MESSAGE_ERROR_UNAUTHORIZED = "Unauthorized"
@@ -27,7 +27,9 @@ MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for updat
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
 MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
+MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED = "Not implemented yet"
 
+MESSAGE_ERROR_FEATURE_IS_PLANNED = "Feature is planned for the implementation"
 
 MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be used."
 

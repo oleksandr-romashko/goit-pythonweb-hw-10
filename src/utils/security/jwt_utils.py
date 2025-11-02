@@ -9,12 +9,14 @@ import uuid
 from jose import jwt, JWTError
 from jose.exceptions import ExpiredSignatureError
 
+from src.utils.logger import logger
+
 
 class TokenError(Exception):
     """Base class for all token-related errors."""
 
 
-class InvalidTokenError(TokenError):
+class MalformedTokenError(TokenError):
     """Raised when the token is malformed or signature validation fails."""
 
 
@@ -100,6 +102,12 @@ def issue_token(
         }
     )
 
+    logger.debug(
+        "Creating JWT for user_id=%d with token_id=%s",
+        payload.get("sub"),
+        token_id,
+    )
+
     return {
         "jti": token_id,
         "token": jwt.encode(payload, key=secret_key, algorithm=algorithm),
@@ -152,6 +160,8 @@ def decode_token(
         )
         return payload
     except ExpiredSignatureError as exc:
+        logger.debug("JWT decode failed: token expired.")
         raise ExpiredTokenError("The token has expired.") from exc
     except JWTError as exc:
-        raise InvalidTokenError("Invalid token or signature.") from exc
+        logger.debug("JWT decode failed: invalid token or signature.")
+        raise MalformedTokenError("Invalid token or signature.") from exc
