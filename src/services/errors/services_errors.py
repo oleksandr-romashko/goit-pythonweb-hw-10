@@ -38,8 +38,8 @@ class UserConflictError(Exception):
         return f"UserConflictError(errors={self.errors})"
 
 
-class InvalidAccessTokenError(Exception):
-    """Raised when an access token is invalid or expired."""
+class InvalidTokenError(Exception):
+    """Raised when an token is invalid or expired."""
 
     def __init__(self, message: str):
         super().__init__(f"Invalid access token: {message}")
