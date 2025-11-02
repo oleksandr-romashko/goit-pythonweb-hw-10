@@ -105,7 +105,7 @@ class UserService:
 
     async def get_all_users(
         self, requester: UserDTO, pagination: Dict[str, int], filters: Dict[str, Any]
-    ) -> Tuple[list[UserWithStatsDTO], int]:
+    ) -> Tuple[List[UserWithStatsDTO], int]:
         """
         Return a paginated list of users with contact counts.
 
@@ -249,16 +249,10 @@ class UserService:
             )
             update_user_data["hashed_password"] = get_password_hash(password)
 
-        # email
-        if email and email == current_user.email:
-            raise BadProvidedDataError(
-                {"email": "New email can't be the same as the current one"}
-            )
-
         # 2. Check for conflicts
 
         # Email conflicts with already registered email
-        if email:
+        if email and email != current_user.email:
             await self._validate_email_conflict(current_user, email)
             update_user_data["email"] = email
 
@@ -555,10 +549,15 @@ class UserService:
     def _validate_creation_permissions(
         self, creator: UserDTO, role: UserRole, username: str, email: str
     ) -> None:
-        """Ensure creator has permissions for assigning the given role."""
+        """
+        Ensure the creator has permission to assign the given role.
+
+        Rules:
+        - Superadmin creation is always restricted.
+        - Admin cannot create another admin.
+        """
         # Restrict creating superadmin users at all
         if role == UserRole.SUPERADMIN:
-            # Potentially suspicious activity requiring logging
             # User tried to create a Superadmin user (to gain full app permissions?).
             logger.warning(
                 "%s attempted to create SUPERADMIN (username=%s, email=%s)",
@@ -582,7 +581,12 @@ class UserService:
     def _validate_password_change(
         self, old_password: Optional[str], new_password: str, hashed_old: str
     ) -> None:
-        """Raise an exception if password change validation fails."""
+        """
+        Validate old password before updating to new password.
+
+        Raises BadProvidedDataError if old password is missing or same as new.
+        Raises InvalidUserCredentialsError if old password doesn't match.
+        """
         if not old_password:
             raise BadProvidedDataError(
                 {"password": "Old password is required to change password"}
@@ -602,7 +606,6 @@ class UserService:
     async def _validate_email_conflict(self, current_user: UserDTO, email: str) -> None:
         existing_user = await self.repo.get_user_by_email(email)
         if existing_user and existing_user.id != current_user.id:
-            # Potentially suspicious activity requiring logging
             # User tries to assign email to an existing email in the system
             # (sniffing to check if there is a user with such email?)
             logger.warning(
