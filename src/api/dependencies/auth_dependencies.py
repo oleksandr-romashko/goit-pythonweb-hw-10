@@ -32,6 +32,17 @@ async def get_current_user(
         )
         raise_http_401_error(MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS)
 
+    logger.debug(
+        (
+            "User(id=%d, username=%s, role=%s, is_active=%s) "
+            "authenticated successfully using token."
+        ),
+        user.id,
+        user.username,
+        user.role,
+        user.is_active,
+    )
+
     return user
 
 
