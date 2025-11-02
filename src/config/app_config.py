@@ -7,9 +7,12 @@ Config instance with database connection settings.
 
 import os
 from pathlib import Path
+import sys
 import tomllib
 
 from dotenv import load_dotenv
+
+from src.utils.logger import logger
 
 BASE_DIR = Path(__file__).parent.parent.parent
 
@@ -38,11 +41,6 @@ class Config:
 
     # Auth settings
     AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", default="")
-    if not AUTH_JWT_SECRET:
-        raise ValueError(
-            "❌ AUTH_JWT_SECRET environment variable is not set. "
-            "Please define it before running the application."
-        )
     AUTH_JWT_ACCESS_EXPIRATION_SECONDS = int(
         os.getenv("AUTH_JWT_ACCESS_EXPIRATION_SECONDS", default="3600")
     )
@@ -126,6 +124,24 @@ class Config:
     APP_LICENSE_URL = (
         "https://github.com/oleksandr-romashko/goit-pythonweb-hw-10/blob/main/LICENSE"
     )
+
+
+required_vars = ["DB_PASSWORD", "AUTH_JWT_SECRET"]
+default_values = ["your_db_password_here", "your_jwt_secret_here"]
+
+errors = []
+for var in required_vars:
+    value = os.environ.get(var)
+    if not value:
+        errors.append(f"App config error: {var} is not set.")
+    if value in default_values:
+        errors.append(
+            f"App config error: {var} value can't be default, please change it."
+        )
+if errors:
+    for err in errors:
+        logger.critical(err)
+    sys.exit(1)
 
 
 config = Config()
