@@ -13,6 +13,7 @@ from src.utils.constants import (
     MESSAGE_ERROR_NOT_FOUND,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
+    MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED,
 )
 
 
@@ -61,5 +62,15 @@ def raise_http_500_error(
     """Raise a 500 Internal Server Error with a consistent payload."""
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail=message,
+    )
+
+
+def raise_http_501_error(
+    message: str = MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED,
+) -> NoReturn:
+    """Raise a 500 Internal Server Error with a consistent payload."""
+    raise HTTPException(
+        status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail=message,
     )
