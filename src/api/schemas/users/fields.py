@@ -2,9 +2,7 @@
 
 from typing import Optional, Any
 
-from pydantic import (
-    Field,
-)
+from pydantic import Field
 
 
 def UsernameField(  # pylint: disable=invalid-name
