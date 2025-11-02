@@ -11,9 +11,11 @@ import tomllib
 
 from dotenv import load_dotenv
 
-load_dotenv()  # Load variables from .env
+BASE_DIR = Path(__file__).parent.parent.parent
 
-pyproject_toml_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+pyproject_toml_path = BASE_DIR / "pyproject.toml"
+
+load_dotenv(BASE_DIR / ".env")  # Load variables from .env
 
 
 class Config:
@@ -42,7 +44,7 @@ class Config:
             "Please define it before running the application."
         )
     AUTH_JWT_ACCESS_EXPIRATION_SECONDS = int(
-        os.getenv("AUTH_JWT_EXPIRATION_SECONDS", default="3600")
+        os.getenv("AUTH_JWT_ACCESS_EXPIRATION_SECONDS", default="3600")
     )
     AUTH_JWT_REFRESH_EXPIRATION_SECONDS = int(
         os.getenv("AUTH_JWT_REFRESH_EXPIRATION_SECONDS", default="604800")
