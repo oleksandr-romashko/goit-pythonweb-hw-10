@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 from typing import Optional, Self
 
-from src.db.models.user import User
-from src.db.models.enums.user_roles import UserRole
+from src.db.models import User
+from src.db.models.enums import UserRole
 
 
 @dataclass(slots=True, frozen=True)

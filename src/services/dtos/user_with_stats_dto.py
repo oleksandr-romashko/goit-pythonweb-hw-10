@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Self, Optional, Dict
 
-from src.db.models.enums.user_roles import UserRole
-from src.db.models.user import User
+from src.db.models import User
+from src.db.models.enums import UserRole
 
 
 @dataclass(slots=True, frozen=True)
