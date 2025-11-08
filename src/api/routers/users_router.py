@@ -66,7 +66,7 @@ router = APIRouter(
     "/",
     summary="Create a new user",
     description=(
-        "Accessible only for admin and superadmin users.\n\n"
+        "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "- **Admin** can only create users with role '*User*'.\n"
         "- **Superadmin** can create users with roles '*User*' or '*Admin*'.\n"
         "- **Superadmin** role cannot be created via API.\n\n"
@@ -116,7 +116,7 @@ async def create_user_by_admin(
     summary="List all users",
     description=(
         "Retrieve a paginated list of users.\n\n"
-        "Accessible only for admin and superadmin users.\n\n"
+        "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "Optional query parameters `username`, `email`, `role`, and `active` "
         "perform **case-insensitive partial matches** "
         "(e.g. `username=ann` matches `Annette`).\n\n"
@@ -170,7 +170,7 @@ async def get_all_users(
     summary="Get user details by ID",
     description=(
         "Retrieve details of a specific user by their ID.\n\n"
-        "Accessible only for **Admin** and **Superadmin**.\n\n"
+        "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "- **Superadmin** can see any user.\n"
         "- **Admin** can see other users and admins, but cannot see other inactive admins.\n"
     ),
@@ -212,10 +212,13 @@ async def get_user_by_id(
     "/{user_id}",
     summary="Partially update user",
     description=(
-        "Partially update existing user record by id. Only superadmin may change roles.\n\n"
-        "- Superadmin: may update any user and roles.\n"
-        "- Admin: may update regular users (and optionally own profile), "
-        "but NOT other admins' roles or other admins at all.\n"
+        "Partially update existing user record by id.\n\n"
+        "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
+        "- **Superadmin**: may update any user and roles.\n"
+        "- **Admin**: may update regular users (and optionally own profile), "
+        "**but NOT** other admins' roles or other admins at all.\n"
+        "- **Only Superadmin** may change roles.\n"
+        "- **No one** may change their own role.\n"
     ),
     status_code=status.HTTP_200_OK,
     response_model=UserAdminRegisteredUserResponseSchema,
@@ -267,7 +270,7 @@ async def patch_user(
     summary="Delete a user",
     description=(
         "Delete an existing user by their ID.\n\n"
-        "Accessible only for **Admin** and **Superadmin**.\n\n"
+        "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "- **Superadmin** can delete any user except themselves and other superadmins.\n"
         "- **Admin** can delete only regular users (not themselves, not other admins "
         "or superadmins).\n"
