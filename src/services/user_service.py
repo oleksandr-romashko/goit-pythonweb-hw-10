@@ -88,7 +88,7 @@ class UserService:
         """Create a new user by an admin or superadmin."""
 
         # Provided role check
-        role = self._validate_role_exists(role_str)
+        role = UserService._validate_role_exists(role_str)
 
         # Role restriction logic check
         self._validate_creation_permissions(creator, role, username, email)
@@ -244,7 +244,7 @@ class UserService:
 
         # password
         if password:
-            self._validate_password_change(
+            UserService._validate_password_change(
                 old_password, password, current_user.hashed_password
             )
             update_user_data["hashed_password"] = get_password_hash(password)
@@ -261,7 +261,7 @@ class UserService:
         # Avatar (with fallback to gravatar if None)
         if avatar is not None and avatar != current_user.avatar:
             if email:
-                update_user_data["avatar"] = self._try_fetch_gravatar(
+                update_user_data["avatar"] = UserService._try_fetch_gravatar(
                     email, log_user=current_user
                 )
             else:
@@ -361,13 +361,22 @@ class UserService:
 
         # 3. Update of another user
 
-        # 3.1 Check role-based restrictions
+        # 3.1 Role-based restrictions
+
+        # Users cannot use update other users
+        if requester.role == UserRole.USER:
+            raise UserRolePermissionError("Users are not allowed to update users")
+
+        # Moderators cannot use update other users
+        if requester.role == UserRole.MODERATOR:
+            raise UserRolePermissionError("Moderators are not allowed to update users")
 
         # Superadmin cannot modify other superadmin user data
         if requester.role == UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
             if "role" in update_data and update_data["role"] != UserRole.SUPERADMIN:
                 raise UserRolePermissionError("Cannot change another superadmin's role")
-        # Other users cannot modify superadmin user data
+
+        # Non-superadmin cannot modify superadmin user data
         if requester.role != UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
             logger.warning(
                 "%s requested update of SUPERADMIN user %s while not allowed",
@@ -392,7 +401,7 @@ class UserService:
 
         # role
         if "role" in update_data:
-            update_data["role"] = self._validate_role_exists(update_data["role"])
+            update_data["role"] = UserService._validate_role_exists(update_data["role"])
 
         # email
         if "email" in update_data and update_data["email"] != user.email:
@@ -466,11 +475,15 @@ class UserService:
                 "Regular users are not allowed to delete users"
             )
 
-        # 3.2 Superadmin restrictions
+        # 3.2 Moderator cannot delete anyone
+        if requester.role == UserRole.MODERATOR:
+            raise UserRolePermissionError("Moderators are not allowed to delete users")
+
+        # 3.3 Superadmin cannot delete other superadmins
         if requester.role == UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
             raise UserRolePermissionError("Superadmin cannot delete another superadmin")
 
-        # 3.3 Admin restrictions
+        # 3.3 Admin cannot delete other admins or superadmins
         if requester.role == UserRole.ADMIN and user.role in {
             UserRole.ADMIN,
             UserRole.SUPERADMIN,
@@ -527,7 +540,7 @@ class UserService:
         hashed_password = get_password_hash(password)
 
         # Avatar (fallback to gravatar)
-        avatar = avatar or self._try_fetch_gravatar(email, log_user=creator)
+        avatar = avatar or UserService._try_fetch_gravatar(email, log_user=creator)
 
         # Create new user data
         new_user_data = {
@@ -553,8 +566,9 @@ class UserService:
         Ensure the creator has permission to assign the given role.
 
         Rules:
-        - Superadmin creation is always restricted.
-        - Admin cannot create another admin.
+        - SUPERADMIN creation is always restricted.
+        - ADMIN cannot create other ADMINS or SUPERADMINS.
+        - MODERATOR cannot create anyone.
         """
         # Restrict creating superadmin users at all
         if role == UserRole.SUPERADMIN:
@@ -567,19 +581,46 @@ class UserService:
             )
             raise UserRolePermissionError("Creating of superadmin is restricted")
 
-        # Restrict creation of admin users by other admins
-        if creator.role == UserRole.ADMIN and role == UserRole.ADMIN:
+        # Moderators cannot create any users at all
+        if creator.role == UserRole.MODERATOR:
             logger.warning(
-                "%s attempted to create another ADMIN user (username=%s)",
+                "%s (MODERATOR) attempted to create user (username=%s, role=%s)",
                 creator,
+                username,
+                role,
+            )
+            raise UserRolePermissionError("Moderators are not allowed to create users")
+
+        # Restrict creation of admin users by other admins
+        if creator.role == UserRole.ADMIN and role in {
+            UserRole.ADMIN,
+            UserRole.SUPERADMIN,
+        }:
+            logger.warning(
+                "%s (ADMIN) attempted to create user with role=%s (username=%s)",
+                creator,
+                role,
                 username,
             )
             raise UserRolePermissionError(
-                "Admin users are not allowed to create other admins"
+                "Admins cannot create other admins or superadmins"
             )
 
+    async def _validate_email_conflict(self, current_user: UserDTO, email: str) -> None:
+        existing_user = await self.repo.get_user_by_email(email)
+        if existing_user and existing_user.id != current_user.id:
+            # User tries to assign email to an existing email in the system
+            # (sniffing to check if there is a user with such email?)
+            logger.warning(
+                ("%s tried to change email to email of the existing user %s"),
+                current_user,
+                UserDTO.from_orm(existing_user),
+            )
+            raise UserConflictError({"email": "Email already taken"})
+
+    @staticmethod
     def _validate_password_change(
-        self, old_password: Optional[str], new_password: str, hashed_old: str
+        old_password: Optional[str], new_password: str, hashed_old: str
     ) -> None:
         """
         Validate old password before updating to new password.
@@ -603,19 +644,8 @@ class UserService:
             )
             raise InvalidUserCredentialsError("Incorrect old password")
 
-    async def _validate_email_conflict(self, current_user: UserDTO, email: str) -> None:
-        existing_user = await self.repo.get_user_by_email(email)
-        if existing_user and existing_user.id != current_user.id:
-            # User tries to assign email to an existing email in the system
-            # (sniffing to check if there is a user with such email?)
-            logger.warning(
-                ("%s tried to change email to email of the existing user %s"),
-                current_user,
-                UserDTO.from_orm(existing_user),
-            )
-            raise UserConflictError({"email": "Email already taken"})
-
-    def _validate_role_exists(self, role: Optional[Union[str, UserRole]]) -> UserRole:
+    @staticmethod
+    def _validate_role_exists(role: Optional[Union[str, UserRole]]) -> UserRole:
         """Ensure provided role exists in UserRole enum."""
         if not role:
             raise UserRoleIsInvalidError("Role cannot be empty or None")
@@ -628,9 +658,8 @@ class UserService:
         except ValueError as exc:
             raise UserRoleIsInvalidError(f"Invalid role: '{role}'") from exc
 
-    def _try_fetch_gravatar(
-        self, email: str, log_user: Optional[UserDTO]
-    ) -> Optional[str]:
+    @staticmethod
+    def _try_fetch_gravatar(email: str, log_user: Optional[UserDTO]) -> Optional[str]:
         """Fetch gravatar avatar"""
         if not email:
             return None
