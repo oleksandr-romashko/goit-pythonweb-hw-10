@@ -74,12 +74,12 @@ async def get_me(
     # Add contacts count
     response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
-    # Return full contact data for admin users
-    if user.role in {UserRole.ADMIN, UserRole.SUPERADMIN}:
+    # Return full contact data for entrusted users
+    if user.role in {UserRole.MODERATOR, UserRole.ADMIN, UserRole.SUPERADMIN}:
         return response_data
 
-    # Sanitize some fields values for non-admin users
-    response_data = _sanitize_non_admin_response(response_data)
+    # Sanitize some fields values for regular users
+    response_data = _sanitize_response_non_entrusted(response_data)
 
     return UserAboutMeResponseSchema.model_validate(response_data)
 
@@ -132,17 +132,17 @@ async def update_me(
     # Add number of user contacts to the response
     response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
-    # Return full contact data for admin users
-    if user.role in {UserRole.ADMIN, UserRole.SUPERADMIN}:
+    # Return full contact data for entrusted users
+    if user.role in {UserRole.MODERATOR, UserRole.ADMIN, UserRole.SUPERADMIN}:
         return response_data
 
-    # Sanitize some fields values for non-admin users
-    response_data = _sanitize_non_admin_response(response_data)
+    # Sanitize some fields values for regular users
+    response_data = _sanitize_response_non_entrusted(response_data)
 
     return UserAboutMeResponseSchema.model_validate(response_data)
 
 
-def _sanitize_non_admin_response(
+def _sanitize_response_non_entrusted(
     data: UserAboutMeAdminResponseSchema,
 ) -> UserAboutMeAdminResponseSchema:
     """

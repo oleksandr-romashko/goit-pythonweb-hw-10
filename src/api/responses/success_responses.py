@@ -11,10 +11,7 @@ from src.api.schemas.users.responses import (
 
 ON_ME_SUCCESS_RESPONSE: Dict = {
     200: {
-        "description": (
-            "Regular User or Admin response "
-            "on successfully retrieved current user information."
-        ),
+        "description": ("Response on successfully retrieved current user information."),
         "model": UserAboutMeOneOfResponseSchema,
         "content": {
             "application/json": {
@@ -24,7 +21,7 @@ ON_ME_SUCCESS_RESPONSE: Dict = {
                         "value": UserAboutMeResponseSchema.generate_example_recursive(),
                     },
                     "Admin user": {
-                        "summary": "Example for admin user",
+                        "summary": "Example for entrusted users (Moderator, Admin, Superadmin)",
                         "value": UserAboutMeAdminResponseSchema.generate_example_recursive(),
                     },
                 }
