@@ -8,7 +8,7 @@ This layer encapsulates all database logic, isolating it from business and routi
 
 from typing import Optional, Any, List, Dict, Tuple
 
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User, Contact
@@ -82,7 +82,13 @@ class UsersRepository:
         # Role filters
 
         # Show certain user roles
-        filters.append(or_(User.role == UserRole.ADMIN, User.role == UserRole.USER))
+        filters.append(
+            or_(
+                User.role == UserRole.ADMIN,
+                User.role == UserRole.MODERATOR,
+                User.role == UserRole.USER,
+            )
+        )
 
         # Hide from admin user other inactive admins
         if requester_role == UserRole.ADMIN:
@@ -118,12 +124,21 @@ class UsersRepository:
         users_stmt = users_stmt.group_by(User.id)
 
         # Ordering (skip for count)
+        # Custom ordering of roles for admin UI: ADMIN → MODERATOR → USER
+        role_custom_order = case(
+            (User.role == UserRole.ADMIN, 1),
+            (User.role == UserRole.MODERATOR, 2),
+            (User.role == UserRole.USER, 3),
+            else_=99,
+        )
         if inactive_last:
             users_stmt = users_stmt.order_by(
-                User.role, User.is_active.desc(), func.lower(User.username)
+                role_custom_order, User.is_active.desc(), func.lower(User.username)
             )
         else:
-            users_stmt = users_stmt.order_by(User.role, func.lower(User.username))
+            users_stmt = users_stmt.order_by(
+                role_custom_order, func.lower(User.username)
+            )
 
         # Pagination
         users_stmt = users_stmt.offset(skip).limit(limit)
