@@ -79,7 +79,7 @@ router = APIRouter(
 )
 async def create_user_by_admin(
     body: UserAdminCreateRequestSchema,
-    user: User = Depends(get_current_active_admin_user),
+    user: User = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
@@ -134,7 +134,7 @@ async def create_user_by_admin(
 async def get_all_users(
     pagination: PaginationFilterRequestSchema = Depends(),
     filters: UsersFilterRequestSchema = Depends(),
-    user: User = Depends(get_current_active_admin_user),
+    user: User = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
 ) -> PaginatedGenericResponseSchema[UserAdminRegisteredUserResponseSchema]:
     """
@@ -184,7 +184,7 @@ async def get_all_users(
 )
 async def get_user_by_id(
     user_id: int,
-    user: User = Depends(get_current_active_admin_user),
+    user: User = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
@@ -232,7 +232,7 @@ async def get_user_by_id(
 async def patch_user(
     user_id: int,
     body: UserUpdateAdminRequestSchema,
-    user: User = Depends(get_current_active_admin_user),
+    user: User = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
@@ -288,7 +288,7 @@ async def patch_user(
 )
 async def delete_user(
     user_id: int,
-    user: User = Depends(get_current_active_admin_user),
+    user: User = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:

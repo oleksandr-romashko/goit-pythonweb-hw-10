@@ -55,7 +55,7 @@ router = APIRouter(
 )
 async def create_contact(
     body: ContactRequestSchema,
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Create a new contact."""
@@ -81,7 +81,7 @@ async def create_contact(
 async def get_all_contacts(
     pagination: PaginationFilterRequestSchema = Depends(),
     filters: ContactsFilterRequestSchema = Depends(),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> PaginatedGenericResponseSchema[ContactResponseSchema]:
     """Retrieve a paginated list of contacts with optional filtration."""
@@ -120,7 +120,7 @@ async def get_all_contacts(
 )
 async def get_upcoming_birthdays(
     pagination: PaginationFilterRequestSchema = Depends(),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> PaginatedGenericResponseSchema[ContactCelebrationResponseSchema]:
     """Return a paginated list of contacts whose birthdays fall within the next 7 days."""
@@ -154,7 +154,7 @@ async def get_single_contact_by_id(
         ge=1,
         example=1,
     ),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Retrieve a single contact by its ID."""
@@ -184,7 +184,7 @@ async def overwrite_contact(
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Fully update an existing contact by ID."""
@@ -213,7 +213,7 @@ async def update_contact(
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
     ),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Partially update an existing contact."""
@@ -238,7 +238,7 @@ async def delete_contact(
     contact_id: int = Path(
         description="The ID of the contact to delete.", ge=1, example=1
     ),
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Delete a contact by ID and return the deleted object."""

@@ -59,13 +59,13 @@ router = APIRouter(
     summary="Get information about the current user (Profile)",
     description=(
         "Information about the current user based on information "
-        "obtained from JWT access token."
+        "obtained from JWT access token"
     ),
     response_model_exclude_none=True,
     responses={**ON_ME_SUCCESS_RESPONSE},
 )
 async def get_me(
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
     """Return current user information."""
@@ -101,7 +101,7 @@ async def get_me(
 )
 async def update_me(
     body: UserUpdateRequestSchema,
-    user: User = Depends(get_current_active_user),
+    user: User = Depends(get_current_active_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
@@ -109,7 +109,7 @@ async def update_me(
     try:
         updated_user_dto: Optional[UserWithStatsDTO] = (
             await user_service.update_current_user(
-                UserDTO.from_orm(user), **body.model_dump()
+                UserDTO.from_orm(user), contacts_service, **body.model_dump()
             )
         )
     except InvalidUserCredentialsError as exc:
