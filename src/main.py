@@ -13,11 +13,8 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse
-from slowapi.errors import RateLimitExceeded
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-
-from src.api.extensions import request_rate_limiter
 from src.api.routers import (
     auth_router,
     contacts_router,
@@ -27,10 +24,9 @@ from src.api.routers import (
     utils_router,
 )
 from src.config import app_config
-from src.utils.constants import (
-    MESSAGE_ERROR_TOO_MANY_REQUESTS,
-    MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
-)
+from src.api.extensions.cors import init_cors
+from src.utils.constants import MESSAGE_ERROR_INTERNAL_SERVER_ERROR
+
 from src.utils.logger import logger
 
 
@@ -74,7 +70,8 @@ app = FastAPI(
     },
 )
 
-app.state.limiter = request_rate_limiter
+# Allow CORS
+init_cors(app)
 
 
 @app.exception_handler(RequestValidationError)
@@ -96,17 +93,6 @@ async def validation_exception_handler(
     )
     # Delegate to FastAPI's default implementation
     return await request_validation_exception_handler(request, exc)
-
-
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(
-    _request: Request, _exc: RateLimitExceeded
-) -> JSONResponse:
-    """Handle request limits"""
-    return JSONResponse(
-        status_code=429,
-        content={"detail": MESSAGE_ERROR_TOO_MANY_REQUESTS},
-    )
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -148,6 +134,7 @@ async def handle_global_exception(
     )
 
 
+# Add routes
 app.include_router(root_router)
 app.include_router(utils_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")

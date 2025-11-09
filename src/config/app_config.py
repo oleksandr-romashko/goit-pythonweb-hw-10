@@ -8,6 +8,7 @@ Config instance with database connection settings.
 import os
 from pathlib import Path
 import sys
+from typing import List
 import tomllib
 
 from dotenv import load_dotenv
@@ -24,7 +25,14 @@ load_dotenv(BASE_DIR / ".env")  # Load variables from .env
 class Config:
     """Holds configuration values for the application, such as database URLs."""
 
-    # Web server settings
+    # CORS settings
+    # List of sources that are allowed to have access to the the app
+    _cors_origins: str = os.getenv("CORS_ORIGINS", default="")
+    CORS_ORIGINS: List[str] = (
+        [origin.strip() for origin in _cors_origins.split(",")] if _cors_origins else []
+    )
+
+    # API web server settings
     WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
     DEBUG = os.getenv("DEBUG", default="False") == "True"
 
@@ -126,9 +134,10 @@ class Config:
     )
 
 
+# === Exit on critical vars ===
+
 required_vars = ["DB_PASSWORD", "AUTH_JWT_SECRET"]
 default_values = ["your_db_password_here", "your_jwt_secret_here"]
-
 errors = []
 for var in required_vars:
     value = os.environ.get(var)
@@ -142,7 +151,6 @@ if errors:
     for err in errors:
         logger.critical(err)
     sys.exit(1)
-
 
 config = Config()
 """Singleton instance of Config containing application settings."""
