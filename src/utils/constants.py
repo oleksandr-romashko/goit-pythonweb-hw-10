@@ -26,6 +26,9 @@ MESSAGE_ERROR_BAD_REQUEST = "Bad request"
 MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for update"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
+MESSAGE_ERROR_TOO_MANY_REQUESTS = (
+    "Too many requests! Request limit exceeded. Try again later."
+)
 MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
 MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED = "Not implemented yet"
 

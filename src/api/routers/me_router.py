@@ -6,7 +6,7 @@ Provides operations for users.
 
 from typing import Optional, Union
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Request, Depends, status
 
 from src.db.models import User
 from src.db.models.enums import UserRole
@@ -30,8 +30,9 @@ from src.api.errors import (
     raise_http_403_error,
     raise_http_409_error,
 )
-from src.api.responses.error_responses import ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES
+from src.api.extensions import request_rate_limiter
 from src.api.responses.error_responses import (
+    ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES,
 )
 from src.api.responses.success_responses import ON_ME_SUCCESS_RESPONSE
@@ -59,12 +60,15 @@ router = APIRouter(
     summary="Get information about the current user (Profile)",
     description=(
         "Information about the current user based on information "
-        "obtained from JWT access token"
+        "obtained from JWT access token.\n\n"
+        "No more than 10 requests per minute"
     ),
     response_model_exclude_none=True,
     responses={**ON_ME_SUCCESS_RESPONSE},
 )
+@request_rate_limiter.limit("10/minute")
 async def get_me(
+    request: Request,
     user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
