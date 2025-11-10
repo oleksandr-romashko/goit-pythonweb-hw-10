@@ -40,11 +40,11 @@ class Config:
     DB_HOST: str = os.getenv("DB_HOST", default="localhost")
     DB_PORT: int = int(os.getenv("DB_PORT", default="5432"))
     DB_NAME: str = os.getenv("DB_NAME", default="postgres")
-    DB_USER: str = os.getenv("DB_USER", default="postgres")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", default="")
+    DB_APP_USER: str = os.getenv("DB_APP_USER", default="postgres")
+    DB_APP_PASSWORD: str = os.getenv("DB_APP_PASSWORD", default="")
 
     DB_URL: str = (
-        f"postgresql+asyncpg://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
 
     # Auth settings
@@ -136,8 +136,12 @@ class Config:
 
 # === Exit on critical vars ===
 
-required_vars = ["DB_PASSWORD", "AUTH_JWT_SECRET"]
-default_values = ["your_db_password_here", "your_jwt_secret_here"]
+required_vars = ["DB_ADMIN_PASSWORD", "DB_APP_PASSWORD", "AUTH_JWT_SECRET"]
+default_values = [
+    "your_db_admin_password_here",
+    "your_db_app_password_here",
+    "your_jwt_secret_here",
+]
 errors = []
 for var in required_vars:
     value = os.environ.get(var)
