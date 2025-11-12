@@ -1,0 +1,76 @@
+name: goit-pythonweb-hw-10-contacts-manager
+
+services:
+  db:
+    container_name: ${DB_HOST}
+    image: postgres:17.5-alpine3.22
+    # ports:
+      # - "${DB_PORT:-5432}:5432"  # Commented for better security and accessing db via pgAdmin tool only.
+    restart: always
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: ${DB_ADMIN_USER}
+      POSTGRES_PASSWORD: ${DB_ADMIN_USER_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_ADMIN_USER:-postgres} -d ${DB_NAME:-mydb}",
+        ]
+      start_period: 15s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ./init/db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./init/db/init.template.sql:/docker-entrypoint-initdb.d/templates/init.template.sql:ro
+      - db_data_volume:/var/lib/postgresql/data
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+      - db-network
+
+  db-admin-panel:
+    profiles: [tools]
+    container_name: db-pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    image: dpage/pgadmin4:9.9
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DB_ADMIN_PANEL_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${DB_ADMIN_PANEL_ACCESS_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${DB_ADMIN_PANEL_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    entrypoint: ["/bin/sh", "/pgadmin4/pgadmin_entrypoint.sh"]
+    volumes:
+      - ./init/pgadmin/pgadmin_custom_entrypoint.sh:/pgadmin4/pgadmin_entrypoint.sh:ro
+      - ./init/pgadmin/servers.template.json:/pgadmin4/servers.template.json:ro
+      - ./init/pgadmin/servers.json:/pgadmin4/servers.json
+      - db_admin_panel_data:/var/lib/pgadmin
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - db-network
+
+networks:
+  backend-network:
+    driver: bridge
+  db-network:
+    driver: bridge
+
+volumes:
+  db_data_volume:
+  db_admin_panel_data:

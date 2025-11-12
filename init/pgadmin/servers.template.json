@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "API DB - Postgres (admin user)",
+      "Group": "Servers",
+      "Host": "${DB_HOST}",
+      "Port": 5432,
+      "MaintenanceDB": "${DB_NAME}",
+      "Username": "${DB_ADMIN_USER}",
+      "SSLMode": "prefer"
+    }
+  }
+}

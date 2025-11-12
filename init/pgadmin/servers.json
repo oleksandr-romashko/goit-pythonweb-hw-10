@@ -1,0 +1,7 @@
+{
+  "Note": "This file is generated from a template at runtime and then used by PgAdmin.",
+  "Potential issues": [
+    "Do not delete as it is required by automation to overwrite file content entirely.",
+    "Do not change it as it's content will be overwritten at first run anyway."
+  ]
+}

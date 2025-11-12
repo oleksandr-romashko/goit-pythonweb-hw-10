@@ -37,15 +37,22 @@ class Config:
     DEBUG = os.getenv("DEBUG", default="False") == "True"
 
     # Database settings
-    DB_HOST: str = os.getenv("DB_HOST", default="localhost")
+    DB_HOST: str = os.getenv("DB_HOST", default="api-db")
     DB_PORT: int = int(os.getenv("DB_PORT", default="5432"))
     DB_NAME: str = os.getenv("DB_NAME", default="postgres")
     DB_APP_USER: str = os.getenv("DB_APP_USER", default="postgres")
-    DB_APP_PASSWORD: str = os.getenv("DB_APP_PASSWORD", default="")
+    DB_APP_USER_PASSWORD: str = os.getenv("DB_APP_PASSWORD", default="")
 
     DB_URL: str = (
-        f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+        f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_USER_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     )
+
+    # Database admin panel settings
+    DB_ADMIN_PANEL_ACCESS_EMAIL: str = os.getenv(
+        "DB_ADMIN_PANEL_ACCESS_EMAIL", default="pgadmin@local.dev"
+    )
+    DB_ADMIN_PANEL_PASSWORD = os.getenv("DB_ADMIN_PANEL_PASSWORD", default="")
+    DB_ADMIN_PANEL_PORT = int(os.getenv("DB_ADMIN_PANEL_PORT", default="5050"))
 
     # Auth settings
     AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", default="")
@@ -136,11 +143,19 @@ class Config:
 
 # === Exit on critical vars ===
 
-required_vars = ["DB_ADMIN_PASSWORD", "DB_APP_PASSWORD", "AUTH_JWT_SECRET"]
+# Require required values and prevent from values being default values
+
+required_vars = [
+    "DB_ADMIN_USER_PASSWORD",
+    "DB_APP_USER_PASSWORD",
+    "DB_ADMIN_PANEL_PASSWORD",
+    "AUTH_JWT_SECRET",
+]
 default_values = [
-    "your_db_admin_password_here",
-    "your_db_app_password_here",
+    "your_db_admin_user_password_here",
+    "your_db_app_user_password_here",
     "your_jwt_secret_here",
+    "your_pgadmin_user_secret_password_here",
 ]
 errors = []
 for var in required_vars:

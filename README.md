@@ -1,6 +1,6 @@
 # Fullstack Web Development with Python <!-- omit in toc -->
 
-### [# goit-pythonweb-hw-08](https://github.com/topics/goit-pythonweb-hw-08) <!-- omit in toc -->
+### [# goit-pythonweb-hw-10](https://github.com/topics/goit-pythonweb-hw-10) <!-- omit in toc -->
 
 <p align="center">
   <img align="center" src="./asserts/thumbnail.svg" width="200" title="Project thumbnail" alt="project thumbnail">
@@ -39,6 +39,7 @@ Main features:
     - [Setting Up the Development Environment](#setting-up-the-development-environment)
       - [1. Clone the Repository and Install Dependencies](#1-clone-the-repository-and-install-dependencies)
       - [2. Setup database](#2-setup-database)
+      - [3. Use Docker to setup environment](#3-use-docker-to-setup-environment)
       - [3. Setup application connection to the database](#3-setup-application-connection-to-the-database)
       - [4. Migrate and synchronize database ORM with database schema](#4-migrate-and-synchronize-database-orm-with-database-schema)
       - [5. Start FastAPI application](#5-start-fastapi-application)
@@ -140,7 +141,7 @@ To create Postgres database in Docker container use following command:
 docker run --name contacts-manager \
   -p 5432:5432 \
   -e POSTGRES_USER=app_user \
-  -e POSTGRES_PASSWORD=your_db_password_here \
+  -e POSTGRES_PASSWORD=your_db_app_password_here \
   -e POSTGRES_DB=contacts_app \
   -d postgres
 ```
@@ -148,10 +149,36 @@ docker run --name contacts-manager \
 where:
 - `contacts-manager` - name of Docker container (you may set your own container name)
 - `app_user` - Postgres username, setup with admin privileges by Docker
-- `your_db_password_here` - password for the user (create your own one)
+- `your_db_app_password_here` - password for the user (create your own one)
 - `contacts_app` - database name to connect to
 - `5432:5432` - exposed external/internal container ports to access postgres database from the outside
 - `postgres` - Docker image name to base our container on (we use PostgreSQL, so `postgres` in our case)
+
+##### 3. Use Docker to setup environment
+
+Use Docker Compose to:
+
+* Build your FastAPI application
+* Setup all necessary initialization scripts (database, admin panel) and persisted volumes
+* Run Postgres database in Docker container
+* Run Redis for cashing in Docker container
+* (Optional) Run PgAdmin in Docker container to access database as all-in-one solution
+
+Start the environment using:
+
+```bash
+docker compose up -d 
+```
+
+> ***Note***:
+> By default database port is not exposed. You may expose it by uncommenting `ports` setting for the `db` service in the [./compose.yaml](./compose.yaml) file.
+> This will allow you to access database directly by using DBeaver or other tool of your choice.
+
+Optionally you may also additionally run PgAdmin in the same compose environment by invoking tools profile to have access to the database using PgAdmin and have all-in-one solution.
+
+```bash
+docker compose --profile tools up -d
+```
 
 ##### 3. Setup application connection to the database
 
@@ -173,11 +200,11 @@ DB_PORT=5432
 DB_NAME=contacts_app
 
 # App-level PostgreSQL user and password
-DB_USER=app_user
-DB_PASSWORD=your_db_password_here
+DB_APP_USER=app_user
+DB_APP_PASSWORD=your_db_app_password_here
 ```
 
-Make sure you `DB_PASSWORD` value correspond to `POSTGRES_PASSWORD` during Docker database creation.
+Make sure you `DB_APP_PASSWORD` value correspond to `POSTGRES_PASSWORD` during Docker database creation.
 
 Now our app should be set up to connect to our database in Docker container.
 
