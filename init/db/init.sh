@@ -7,7 +7,7 @@ echo "[INIT] Running init.sh..."
 # Render SQL with placeholders replaced
 sed -e "s|\${DB_NAME}|$DB_NAME|g" \
     -e "s|\${DB_APP_USER}|$DB_APP_USER|g" \
-    -e "s|\${DB_APP_PASSWORD}|$DB_APP_PASSWORD|g" \
+    -e "s|\${DB_APP_USER_PASSWORD}|$DB_APP_USER_PASSWORD|g" \
     /docker-entrypoint-initdb.d/templates/init.template.sql > /tmp/init.sql
 
 echo "[INIT] SQL template rendered to /tmp/init.sql"

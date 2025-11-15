@@ -5,7 +5,7 @@ BEGIN
     SELECT FROM pg_catalog.pg_roles WHERE rolname = '${DB_APP_USER}'
   ) THEN
     RAISE NOTICE 'Creating app user...';
-    CREATE USER ${DB_APP_USER} WITH PASSWORD '${DB_APP_PASSWORD}';
+    CREATE USER ${DB_APP_USER} WITH PASSWORD '${DB_APP_USER_PASSWORD}';
   ELSE
     RAISE NOTICE 'User ${DB_APP_USER} already exists, skipping creation.';
   END IF;

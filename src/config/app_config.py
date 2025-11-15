@@ -41,7 +41,7 @@ class Config:
     DB_PORT: int = int(os.getenv("DB_PORT", default="5432"))
     DB_NAME: str = os.getenv("DB_NAME", default="postgres")
     DB_APP_USER: str = os.getenv("DB_APP_USER", default="postgres")
-    DB_APP_USER_PASSWORD: str = os.getenv("DB_APP_PASSWORD", default="")
+    DB_APP_USER_PASSWORD: str = os.getenv("DB_APP_USER_PASSWORD", default="")
 
     DB_URL: str = (
         f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_USER_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

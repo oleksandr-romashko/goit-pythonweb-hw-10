@@ -201,10 +201,10 @@ DB_NAME=contacts_app
 
 # App-level PostgreSQL user and password
 DB_APP_USER=app_user
-DB_APP_PASSWORD=your_db_app_password_here
+DB_APP_USER_PASSWORD=your_db_app_password_here
 ```
 
-Make sure you `DB_APP_PASSWORD` value correspond to `POSTGRES_PASSWORD` during Docker database creation.
+Make sure you `DB_APP_USER_PASSWORD` value correspond to `POSTGRES_PASSWORD` during Docker database creation.
 
 Now our app should be set up to connect to our database in Docker container.
 
