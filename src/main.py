@@ -5,8 +5,8 @@ Initializes the FastAPI app, registers all routers, and configures
 global exception handlers. If run directly, starts a Uvicorn server.
 """
 
-import traceback
 from contextlib import asynccontextmanager
+import traceback
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request, status
@@ -15,6 +15,7 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from src.api.extensions import init_cors, add_processing_time_header
 from src.api.routers import (
     auth_router,
     contacts_router,
@@ -24,7 +25,6 @@ from src.api.routers import (
     utils_router,
 )
 from src.config import app_config
-from src.api.extensions.cors import init_cors
 from src.utils.constants import MESSAGE_ERROR_INTERNAL_SERVER_ERROR
 
 from src.utils.logger import logger
@@ -73,7 +73,11 @@ app = FastAPI(
 # Allow CORS
 init_cors(app)
 
+if app_config.DEBUG:
+    add_processing_time_header(app)
 
+
+# TODO: Move all exception handlers into module /api/errors/exception_handlers.py to have cleaner main
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(
     request: Request, exc: RequestValidationError
@@ -99,7 +103,11 @@ async def validation_exception_handler(
 async def http_exception_handler(
     request: Request, exc: StarletteHTTPException
 ) -> JSONResponse:
-    """Handle all Starlette and FastAPI HTTPExceptions and unify response."""
+    """
+    Handle all Starlette and FastAPI HTTPExceptions.
+
+    Logs error and return unify response.
+    """
     logger.info(
         "HTTP %s: %s %s%s",
         exc.status_code,
@@ -117,7 +125,11 @@ async def http_exception_handler(
 async def handle_global_exception(
     request: Request, exc: Exception  # pylint: disable=unused-argument
 ) -> JSONResponse:
-    """Catch all unhandled exceptions."""
+    """
+    Catch all unhandled exceptions.
+
+    Logs error and return unify sanitized response.
+    """
     logger.exception("Unhandled exception: %s", exc)
     if app_config.DEBUG:
         return JSONResponse(
