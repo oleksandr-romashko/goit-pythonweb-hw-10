@@ -6,8 +6,8 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta, timezone
 import uuid
 
-from jose import jwt, JWTError
-from jose.exceptions import ExpiredSignatureError
+from jose import jwt, JWTError  # type: ignore[import]
+from jose.exceptions import ExpiredSignatureError  # type: ignore[import]
 
 from src.utils.logger import logger
 

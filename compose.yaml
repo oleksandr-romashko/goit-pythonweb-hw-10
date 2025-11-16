@@ -1,11 +1,56 @@
 name: goit-pythonweb-hw-10-contacts-manager
 
 services:
+  api:
+    container_name: api-fastapi
+    depends_on:
+      db:
+        condition: service_healthy
+      api-cache:
+        condition: service_started
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_PORT:-8000}:8000"
+    restart: always
+    env_file:
+      - .env
+    healthcheck:
+      # Test both healthchecker and docs:
+      #   /api/healthchecker/  - verifies backend health (including DB connection)
+      #   /docs/               - verifies swagger api docs page is served
+      test: [
+          "CMD-SHELL",
+          "wget -q --spider http://127.0.0.1:8000/api/healthchecker/ && \
+          wget -q --spider http://127.0.0.1:8000/docs/ || exit 1",
+        ]
+      start_period: 10s
+      interval: 20s
+      timeout: 5s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend-network
+  
+  api-cache:
+    container_name: cache-redis
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: always
+    environment:
+      ALLOW_EMPTY_PASSWORD: yes
+    networks:
+      - backend-network
+
+
   db:
     container_name: ${DB_HOST}
     image: postgres:17.5-alpine3.22
-    # ports:
-      # - "${DB_PORT:-5432}:5432"  # Commented for better security and accessing db via pgAdmin tool only.
+    ports:
+      - "${DB_PORT:-5432}:5432"  # Let commented for better security and accessing db via pgAdmin tool only.
     restart: always
     env_file:
       - .env
@@ -25,8 +70,8 @@ services:
       timeout: 5s
       retries: 5
     volumes:
-      - ./init/db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
-      - ./init/db/init.template.sql:/docker-entrypoint-initdb.d/templates/init.template.sql:ro
+      - ./init/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+      - ./init/postgres/init.template.sql:/docker-entrypoint-initdb.d/templates/init.template.sql:ro
       - db_data_volume:/var/lib/postgresql/data
     security_opt:
       - no-new-privileges:true
@@ -36,7 +81,7 @@ services:
 
   db-admin-panel:
     profiles: [tools]
-    container_name: db-pgadmin
+    container_name: db-admin-panel-pgadmin
     depends_on:
       db:
         condition: service_healthy
@@ -50,7 +95,7 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${DB_ADMIN_PANEL_ACCESS_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${DB_ADMIN_PANEL_PASSWORD}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      test: ["CMD", "wget -q --spider http://127.0.0.1:80 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3

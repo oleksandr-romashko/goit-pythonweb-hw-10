@@ -97,7 +97,7 @@ async def create_user_by_admin(
             password=body.password,
             role_str=body.role,
             avatar=body.avatar,
-            is_active=body.is_active,
+            is_active=body.is_active or True,
         )
     except UserRoleIsInvalidError:
         raise_http_400_error(MESSAGE_ERROR_USER_ROLE_IS_INVALID)

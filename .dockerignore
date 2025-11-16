@@ -1,0 +1,64 @@
+# Docker
+Dockerfile*
+.dockerignore
+compose.yaml
+
+# Python
+__pycache__/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.nox/
+__pypackages__/
+build/
+venv/
+.venv/
+*.py[cod]
+*.so
+*.egg-info/
+.coverage
+.coverage.*
+coverage.xml
+
+# Log files
+*.log
+
+# Pyenv
+.python-version
+
+# Poetry
+# poetry.lock
+# poetry.toml
+
+# Pipenv
+Pipfile.lock
+
+# Environment
+.env
+.env.*
+# Do not include environment init
+init/
+
+# Node_modules - it will be reinstalled in the container
+node_modules
+
+# dist directory - the code will be compiled inside the container
+dist
+
+# Git
+.git/
+.gitignore
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Docs
+*.md
+*.odt*
+# LICENSE
+asserts/
+
+# OS
+.DS_Store
+Thumbs.db

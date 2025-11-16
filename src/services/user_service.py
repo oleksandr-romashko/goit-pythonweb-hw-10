@@ -3,12 +3,14 @@
 from typing import Optional, Union, Any, Dict, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from libgravatar import Gravatar
+from libgravatar import Gravatar  # type: ignore[import]
 
 from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.services.dtos import UserDTO
+from src.services.errors import UserConflictError
+from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 from src.utils.security.password_utils import get_password_hash, verify_password
@@ -30,6 +32,40 @@ class UserService:
     def __init__(self, db_session: AsyncSession):
         """Initialize the service with a users repository."""
         self.repo = UsersRepository(db_session)
+
+    async def create_superuser(self, username: str, email: str, password: str) -> None:
+        """Create a superuser if it doesn't exist. Returns True if created."""
+        if not email:
+            raise InvalidUserCredentialsError(
+                "Email for superadmin is empty or missing."
+            )
+        elif email == DEFAULT_SUPERADMIN_EMAIL:
+            raise InvalidUserCredentialsError(
+                "Email for superadmin is a default email and is invalid."
+            )
+
+        if not password:
+            raise InvalidUserCredentialsError(
+                "Password for superadmin is empty or missing."
+            )
+        elif password == DEFAULT_SUPERADMIN_PASSWORD:
+            raise InvalidUserCredentialsError(
+                "Password for superadmin is a default password and is invalid"
+            )
+
+        existing_user = await self.get_user_by_username(username)
+        if existing_user:
+            raise UserConflictError({"init": "Superuser already exists"})
+
+        await self._create_user_common(
+            creator=None,
+            username=username,
+            email=email,
+            password=password,
+            avatar=None,
+            role=UserRole.SUPERADMIN,
+            is_active=True,
+        )
 
     async def register_user(
         self,
@@ -238,7 +274,7 @@ class UserService:
         - UserConflictError: if new email conflicts with other registered email
         """
 
-        update_user_data = {}
+        update_user_data: Dict[str, Any] = {}
 
         # 1. Check provided data
 
@@ -671,3 +707,4 @@ class UserService:
             logger.debug(
                 "Failed to fetch Gravatar for %s: %s", log_user or "Unknown", e
             )
+            return None

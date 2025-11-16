@@ -14,6 +14,13 @@ import tomllib
 from dotenv import load_dotenv
 
 from src.utils.logger import logger
+from src.utils.constants import (
+    DEFAULT_DB_ADMIN_USER_PASSWORD,
+    DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL,
+    DEFAULT_DB_APP_USER_PASSWORD,
+    DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_DB_ADMIN_PANEL_PASSWORD,
+)
 
 BASE_DIR = Path(__file__).parent.parent.parent
 
@@ -49,7 +56,7 @@ class Config:
 
     # Database admin panel settings
     DB_ADMIN_PANEL_ACCESS_EMAIL: str = os.getenv(
-        "DB_ADMIN_PANEL_ACCESS_EMAIL", default="pgadmin@local.dev"
+        "DB_ADMIN_PANEL_ACCESS_EMAIL", default=DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL
     )
     DB_ADMIN_PANEL_PASSWORD = os.getenv("DB_ADMIN_PANEL_PASSWORD", default="")
     DB_ADMIN_PANEL_PORT = int(os.getenv("DB_ADMIN_PANEL_PORT", default="5050"))
@@ -64,8 +71,8 @@ class Config:
     )
     AUTH_JWT_ALGORITHM = os.getenv("AUTH_JWT_ALGORITHM", default="HS256")
 
-    # Usernames
-    SUPERADMIN_USERNAME = os.getenv("AUTH_SUPERADMIN_USERNAME", default="superadmin")
+    # Not allowed usernames
+    SUPERADMIN_USERNAME = os.getenv("SUPERADMIN_USERNAME", default="superadmin")
 
     RESERVED_USERNAMES: set[str] = {
         "admin",
@@ -146,16 +153,17 @@ class Config:
 # Require required values and prevent from values being default values
 
 required_vars = [
+    "DB_ADMIN_USER",
     "DB_ADMIN_USER_PASSWORD",
     "DB_APP_USER_PASSWORD",
     "DB_ADMIN_PANEL_PASSWORD",
     "AUTH_JWT_SECRET",
 ]
 default_values = [
-    "your_db_admin_user_password_here",
-    "your_db_app_user_password_here",
-    "your_jwt_secret_here",
-    "your_pgadmin_user_secret_password_here",
+    DEFAULT_DB_ADMIN_USER_PASSWORD,
+    DEFAULT_DB_APP_USER_PASSWORD,
+    DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_DB_ADMIN_PANEL_PASSWORD,
 ]
 errors = []
 for var in required_vars:

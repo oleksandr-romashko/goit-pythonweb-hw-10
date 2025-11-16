@@ -46,3 +46,13 @@ MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED = "User deletion is restricted"
 MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED = (
     "User does not exist or you are not allowed to perform this action with this user"
 )
+
+# Default ENV variables values
+
+DEFAULT_DB_ADMIN_USER_PASSWORD = "your_db_admin_user_password_here"
+DEFAULT_DB_APP_USER_PASSWORD = "your_db_app_user_password_here"
+DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL = "pgadmin@local.dev"
+DEFAULT_DB_ADMIN_PANEL_PASSWORD = "your_pgadmin_user_secret_password_here"
+DEFAULT_SUPERADMIN_EMAIL = "superadmin@example.com"
+DEFAULT_SUPERADMIN_PASSWORD = "superadmin_secret_password"
+DEFAULT_AUTH_JWT_SECRET = "your_jwt_secret_here"

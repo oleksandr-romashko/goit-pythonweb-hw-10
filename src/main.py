@@ -70,11 +70,12 @@ app = FastAPI(
     },
 )
 
-# Allow CORS
-init_cors(app)
-
 if app_config.DEBUG:
     add_processing_time_header(app)
+
+
+# Allow CORS
+init_cors(app)
 
 
 # TODO: Move all exception handlers into module /api/errors/exception_handlers.py to have cleaner main
@@ -162,7 +163,7 @@ def main() -> None:
     uvicorn.run(
         "src.main:app",
         host="0.0.0.0",
-        port=app_config.WEB_PORT,
+        port=8000,
         reload=app_config.DEBUG,
     )
 
