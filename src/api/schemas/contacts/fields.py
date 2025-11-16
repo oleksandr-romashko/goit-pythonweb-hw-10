@@ -12,14 +12,10 @@ def FirstNameField(  # pylint: disable=invalid-name
     description: Optional[str] = None,
 ) -> Any:
     """Construct first name field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(max_length=50))
-
     return Field(
         None if optional else ...,
         description=description or "First name",
-        **constraints,
+        max_length=50 if validate else None,
         json_schema_extra={"example": "John"},
     )
 
@@ -30,14 +26,10 @@ def LastNameField(  # pylint: disable=invalid-name
     description: Optional[str] = None,
 ) -> Any:
     """Construct last name field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(max_length=50))
-
     return Field(
         None if optional else ...,
         description=description or "Last name",
-        **constraints,
+        max_length=50 if validate else None,
         json_schema_extra={"example": "Doe"},
     )
 
@@ -48,14 +40,10 @@ def EmailField(  # pylint: disable=invalid-name
     description: Optional[str] = None,
 ) -> Any:
     """Construct email field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(max_length=150))
-
     return Field(
         None if optional else ...,
         description=description or "Email address",
-        **constraints,
+        max_length=150 if validate else None,
         json_schema_extra={"example": "john.doe@example.com"},
     )
 
@@ -64,14 +52,10 @@ def PhoneNumberField(  # pylint: disable=invalid-name
     optional: bool = False, validate: bool = True
 ) -> Any:
     """Construct phone number field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(max_length=40))
-
     return Field(
         None if optional else ...,
         description="Phone number",
-        **constraints,
+        max_length=40 if validate else None,
         json_schema_extra={"example": "+123123456789"},
     )
 

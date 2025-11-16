@@ -11,14 +11,11 @@ def UsernameField(  # pylint: disable=invalid-name
     description: Optional[str] = None,
 ) -> Any:
     """Construct username field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(min_length=3, max_length=50))
-
     return Field(
         None if optional else ...,
         description=description or "User username",
-        **constraints,
+        min_length=3 if validate else None,
+        max_length=50 if validate else None,
         json_schema_extra={"example": "JohnDoe"},
     )
 
@@ -29,14 +26,10 @@ def EmailField(  # pylint: disable=invalid-name
     description: Optional[str] = None,
 ) -> Any:
     """Construct email field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(max_length=150))
-
     return Field(
         None if optional else ...,
         description=description or "Email address",
-        **constraints,
+        max_length=150 if validate else None,
         json_schema_extra={"example": "john.doe@example.com"},
     )
 
@@ -48,14 +41,11 @@ def PasswordField(  # pylint: disable=invalid-name
     example: Optional[str] = None,
 ) -> Any:
     """Construct password field with optional validation and value example"""
-    constraints = {}
-    if validate:
-        constraints.update(dict(min_length=8, max_length=128))
-
     return Field(
         None if optional else ...,
         description=description or "Strong password",
-        **constraints,
+        min_length=8 if validate else None,
+        max_length=128 if validate else None,
         json_schema_extra={"example": example or "StrongPass1!"},
     )
 
