@@ -26,7 +26,10 @@ class User(TimestampMixin, Base):
     hashed_password: Mapped[str] = mapped_column(String(), nullable=False)
     avatar: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_email_confirmed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     role: Mapped[UserRole] = mapped_column(
         String(20), nullable=False, default=UserRole.USER, server_default=UserRole.USER
     )

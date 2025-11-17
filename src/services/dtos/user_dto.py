@@ -17,6 +17,7 @@ class UserDTO:
     hashed_password: str
     role: UserRole
     is_active: bool
+    is_email_confirmed: bool
     avatar: Optional[str] = None
 
     def __str__(self) -> str:
@@ -38,5 +39,6 @@ class UserDTO:
             hashed_password=user.hashed_password,
             role=user.role,
             is_active=user.is_active,
+            is_email_confirmed=user.is_email_confirmed,
             avatar=getattr(user, "avatar", None),
         )
