@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config import app_config
 from src.db.models import User
-from src.services import AuthService, UserService, ContactService, TokenType
+from src.services import AuthService, UserService, ContactService
 from src.services.errors import (
     UserConflictError,
     InvalidUserCredentialsError,
@@ -25,8 +25,8 @@ from src.utils.logger import logger
 
 from src.api.dependencies import (
     get_auth_service,
-    get_user_service,
     get_contacts_service,
+    get_user_service,
 )
 from src.api.errors import raise_http_401_error, raise_http_409_error
 from src.api.responses.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
@@ -136,22 +136,20 @@ async def oauth2_login(
 
 @router.post(
     "/refresh",
-    summary="Issue access token based on valid refresh token.",
+    summary="Issue access token based on valid refresh token",
     response_model=AccessTokenResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully issued a new access token.",
 )
-async def refresh_access_token(
+async def issue_access_token_on_refresh_token(
     body: RefreshTokenRequestSchema,
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
 ) -> AccessTokenResponseSchema:
     """Issue access token based on refresh token."""
     try:
-        refresh_token_data = auth_service.decode_token(
+        refresh_token_data = auth_service.decode_refresh_token(
             body.refresh_token.get_secret_value(),
-            TokenType.REFRESH,
-            enforce_numeric_sub=True,
         )
     except InvalidTokenError:
         raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
@@ -177,7 +175,7 @@ async def refresh_access_token(
         )
         raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
 
-    access_token = auth_service.create_token(user_id, TokenType.ACCESS)
+    access_token = auth_service.create_access_token(user_id)
 
     logger.info(
         "Refresh token jti=%s validated successfully for %s user with user_id=%s",
@@ -211,8 +209,8 @@ async def _authenticate_and_issue_token(
         raise_http_401_error(MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS)
 
     # Generate access and refresh tokens
-    access_token = auth_service.create_token(user.id, TokenType.ACCESS)
-    refresh_token = auth_service.create_token(user.id, TokenType.REFRESH)
+    access_token = auth_service.create_access_token(user.id)
+    refresh_token = auth_service.create_refresh_token(user.id)
 
     logger.debug(
         (

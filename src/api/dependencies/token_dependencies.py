@@ -3,7 +3,7 @@
 from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
-from src.services import AuthService, TokenType
+from src.services import AuthService
 from src.services.errors import InvalidTokenError
 from src.utils.constants import MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN
 from src.utils.logger import logger
@@ -34,7 +34,7 @@ async def get_current_user_id(
     """Validate provided JWT token and extract user identifier from it."""
     # Decode token
     try:
-        payload = token_service.decode_token(token, TokenType.ACCESS)
+        payload = token_service.decode_access_token(token)
     except InvalidTokenError as exc:
         logger.warning(str(exc))
         raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)

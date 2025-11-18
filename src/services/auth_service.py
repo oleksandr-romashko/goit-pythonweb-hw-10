@@ -15,11 +15,17 @@ from src.utils.logger import logger
 from .errors import InvalidTokenError
 
 
-class TokenType(str, Enum):
-    """Enum representing token type"""
+class AuthTokenType(str, Enum):
+    """Enum representing authentication token types."""
 
     ACCESS = "access_token"
     REFRESH = "refresh_token"
+
+
+class TokenAudience(str, Enum):
+    """Enum representing token audience (aud claim)"""
+
+    API = "api"
 
 
 class AuthService:
@@ -28,24 +34,44 @@ class AuthService:
     def __init__(
         self,
         *,
-        secret=None,
-        algorithm=None,
-        access_expiration=None,
-        refresh_expiration=None,
+        access_secret: Optional[str] = None,
+        algorithm: Optional[str] = None,
+        access_expiration: Optional[int] = None,
+        refresh_expiration: Optional[int] = None,
     ):
         """Initialize the service with auth settings from app config."""
-        self.secret: str = secret or app_config.AUTH_JWT_SECRET
-        self.alg: str = algorithm or app_config.AUTH_JWT_ALGORITHM
-        self.access_exp = (
+        self.access_secret = access_secret or app_config.AUTH_JWT_SECRET
+        self.alg = algorithm or app_config.AUTH_JWT_ALGORITHM
+        self.access_token_exp = (
             access_expiration or app_config.AUTH_JWT_ACCESS_EXPIRATION_SECONDS
         )
         self.refresh_exp = (
             refresh_expiration or app_config.AUTH_JWT_REFRESH_EXPIRATION_SECONDS
         )
 
-    def create_token(self, user_id: int, token_type: TokenType) -> str:
+    def create_access_token(self, user_id: int) -> str:
+        """Create a signed JWT access token for a given user ID."""
+        return self._create_auth_token(user_id, AuthTokenType.ACCESS)
+
+    def create_refresh_token(self, user_id: int) -> str:
+        """Create a signed JWT refresh token for a given user ID."""
+        return self._create_auth_token(user_id, AuthTokenType.REFRESH)
+
+    def decode_access_token(self, token: str) -> Dict[str, Any]:
+        """Decode and validate a JWT access token."""
+        return self._decode_auth_token(
+            token, AuthTokenType.ACCESS, enforce_numeric_sub=True
+        )
+
+    def decode_refresh_token(self, token: str) -> Dict[str, Any]:
+        """Decode and validate a JWT refresh token."""
+        return self._decode_auth_token(
+            token, AuthTokenType.REFRESH, enforce_numeric_sub=True
+        )
+
+    def _create_auth_token(self, user_id: int, token_type: AuthTokenType) -> str:
         """
-        Create a signed JWT token of a given type (access or refresh).
+        Create a signed JWT authentication token of a given type (access or refresh).
 
         Args:
             user_id (int): User ID as a payload to encode into the JWT.
@@ -55,30 +81,38 @@ class AuthService:
             str: Encoded JWT token (Base64 string) ready for use in Authorization header.
         """
 
-        expiration = (
-            self.refresh_exp if token_type == TokenType.REFRESH else self.access_exp
-        )
+        if token_type not in AuthTokenType:
+            raise ValueError(f"Unsupported auth token type: {token_type}")
+
+        expiration = 0
+        if token_type == AuthTokenType.ACCESS:
+            expiration = self.access_token_exp
+        elif token_type == AuthTokenType.REFRESH:
+            expiration = self.refresh_exp
 
         token_data = issue_token(
-            secret_key=self.secret,
+            secret_key=self.access_secret,
             algorithm=self.alg,
             expiration_time_seconds=expiration,
             subject=str(user_id),
-            audience=token_type.value,
+            audience=TokenAudience.API.value,
+            data={"token_type": token_type.value},
         )
+
         logger.info(
-            "Issued %s (jwt_id=%s) for user with user_id=%d.",
+            "Issued %s for user with user_id=%d (jti=%s).",
             token_type.value,
             token_data.get("jti"),
             user_id,
         )
+
         return token_data["token"]
 
-    def decode_token(
-        self, token: str, token_type: TokenType, *, enforce_numeric_sub: bool = True
+    def _decode_auth_token(
+        self, token: str, token_type: AuthTokenType, *, enforce_numeric_sub: bool = True
     ) -> Dict[str, Any]:
         """
-        Decode and validate JWT token.
+        Decode and validate JWT authentication token.
 
         Ensures:
         - Token is valid and not expired
@@ -95,13 +129,17 @@ class AuthService:
         Raises:
             InvalidAccessTokenError: If the token is invalid or malformed.
         """
+        if token_type not in AuthTokenType:
+            raise ValueError(f"Unsupported auth token type: {token_type}")
+
         payload = {}
         try:
             payload = decode_token(
                 token=token,
-                secret_key=self.secret,
+                secret_key=self.access_secret,
                 algorithms=[self.alg],
-                audience=token_type.value,
+                audience=TokenAudience.API.value,
+                token_type=token_type.value,
             )
         except MalformedTokenError as exc:
             logger.debug("Token is malformed and invalid: %s", str(exc))
@@ -126,6 +164,13 @@ class AuthService:
             raise InvalidTokenError(
                 f"Token ({token_type.value}) subject ('sub') claim must be numeric"
             )
+
+        logger.debug(
+            "Decoded and validated %s for user with user_id=%d (jti=%s).",
+            token_type.value,
+            payload.get("sub", "unknown"),
+            payload.get("jti", "unknown"),
+        )
 
         return payload
 

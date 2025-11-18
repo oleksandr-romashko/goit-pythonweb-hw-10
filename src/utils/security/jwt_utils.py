@@ -119,6 +119,7 @@ def decode_token(
     secret_key: str,
     algorithms: List[str],
     audience: Optional[str] = None,
+    token_type: Optional[str] = None,
     verify_nbf: bool = True,
     verify_exp: bool = True,
 ) -> Dict[str, Any]:
@@ -158,6 +159,12 @@ def decode_token(
                 "verify_exp": verify_exp,
             },
         )
+        if token_type:
+            actual_token_type = payload.get("token_type")
+            if actual_token_type != token_type:
+                raise MalformedTokenError(
+                    f"Invalid token type: expected '{token_type}', got '{actual_token_type}'"
+                )
         return payload
     except ExpiredSignatureError as exc:
         logger.debug("JWT decode failed: token expired.")
