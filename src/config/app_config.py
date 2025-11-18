@@ -19,10 +19,11 @@ from src.utils.constants import (
     DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL,
     DEFAULT_DB_APP_USER_PASSWORD,
     DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_EMAIL_JWT_SECRET,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
 )
 
-BASE_DIR = Path(__file__).parent.parent.parent
+BASE_DIR = Path(__file__).parent.parent.parent  # Root project directory
 
 pyproject_toml_path = BASE_DIR / "pyproject.toml"
 
@@ -92,6 +93,12 @@ class Config:
         """Return reserved usernames excluding system admin accounts."""
         return self.RESERVED_USERNAMES - {self.SUPERADMIN_USERNAME.lower()}
 
+    # Email settings
+    EMAIL_JWT_SECRET = os.getenv("EMAIL_JWT_SECRET", default="")
+    EMAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS = int(
+        os.getenv("EMAIL_JWT_EXPIRATION_SECONDS", default="86400")
+    )
+
     # Domain logic settings
 
     UPCOMING_BIRTHDAYS_PERIOD_DAYS: int = 7
@@ -158,11 +165,13 @@ required_vars = [
     "DB_APP_USER_PASSWORD",
     "DB_ADMIN_PANEL_PASSWORD",
     "AUTH_JWT_SECRET",
+    "EMAIL_JWT_SECRET",
 ]
 default_values = [
     DEFAULT_DB_ADMIN_USER_PASSWORD,
     DEFAULT_DB_APP_USER_PASSWORD,
     DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_EMAIL_JWT_SECRET,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
 ]
 errors = []
