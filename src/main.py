@@ -12,7 +12,8 @@ from typing import AsyncIterator
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
-from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from src.api.extensions import init_cors, add_processing_time_header
@@ -154,6 +155,16 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(users_router, prefix="/api")
 app.include_router(me_router, prefix="/api")
 app.include_router(contacts_router, prefix="/api")
+
+# Add static files serving
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+# Resolve favicon requests
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Serve the favicon.ico file."""
+    return FileResponse("static/images/favicon.ico")
 
 
 def main() -> None:
