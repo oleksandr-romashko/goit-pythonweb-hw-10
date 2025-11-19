@@ -21,13 +21,12 @@ async def ensure_superuser_exists() -> None:
 
         try:
             await user_service.create_superuser(username, email, password)
+            logger.info("✔ Superuser created.")
         except InvalidUserCredentialsError as e:
             logger.error("✘ Failed to create superuser: %s", str(e))
             sys.exit(1)
         except UserConflictError:
             logger.debug("✔ Superuser already exists. No action needed.")
-        else:
-            logger.info("✔ Superuser created.")
 
 
 if __name__ == "__main__":
