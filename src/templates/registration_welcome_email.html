@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Contacts Manager App</title>
+    <style>
+        @media only screen and (max-width: 480px) {
+            .card {
+                padding: 24px !important;
+            }
+
+            .button {
+                padding: 12px 18px !important;
+                font-size: 16px !important;
+                width: 100% !important;
+                display: block !important;
+                text-align: center !important;
+            }
+        }
+
+        a.button:hover {
+            background-color: #3d63e8 !important;
+            transition: background-color 0.3s ease;
+        }
+
+        a.button:active {
+            background-color: #354fc1 !important;
+        }
+
+        a.button:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(74, 115, 255, 0.5);
+        }
+
+        a.fallback-link:hover {
+            color: #3d63e8 !important;
+            text-decoration: underline !important;
+            transition: background-color 0.3s ease;
+        }
+
+        a.fallback-link:active {
+            color: #354fc1 !important;
+        }
+
+        a.fallback-link:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(74, 115, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body style="margin:0; padding:0; background-color:#f5f6f8; 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center" style="padding: 40px 0;">
+
+                <!-- Card -->
+                <table class="card" role="presentation" width="100%" cellpadding="0" cellspacing="0" style="
+                        display:inline-block;
+                        max-width: 480px;
+                        background:#ffffff;
+                        border-radius:12px;
+                        padding: 24px 40px 40px 40px;
+                        line-height: 1.7;
+                        font-size: 16px;
+                        border: 1px solid #e9e9ef;
+                        box-shadow:0 2px 10px rgba(0,0,0,0.06);
+                    ">
+
+                    <!-- Logo -->
+                    <tr>
+                        <td align="center" style="padding-top: 8px;">
+                            <!-- Optional -->
+                            <img src="{{logo_url}}" width="48" height="48" style="display:block; border-radius:8px;"
+                                alt="Contacts Manager App logo">
+                        </td>
+                    </tr>
+
+                    <!-- Title -->
+                    <tr>
+                        <td style="font-size:22px; font-weight:bold; color:#222; padding-top: 18px; text-align:center;">
+                            Confirm your email
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="color:#555; padding-top: 24px;">
+                            Hi {{fullname}},<br><br>thanks for signing up! Please verify your email address to activate
+                            your account.
+                        </td>
+                    </tr>
+
+                    <!-- Button -->
+                    <tr>
+                        <td align="center" style="padding-top: 28px;">
+                            <a class="button" href="{{verify_url}}" style="
+                                   display:inline-block;
+                                   box-sizing: border-box;
+                                   background-color:#4a73ff;
+                                   border:1px solid #3d63e8;
+                                   color:#ffffff;
+                                   text-decoration:none;
+                                   padding:12px 22px;
+                                   border-radius:6px;
+                                   font-weight:bold;
+                               " rel="noopener noreferrer" target="_blank"
+                                aria-label="Verify your email for Contacts Manager App">
+                                Verify Email Address
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Secondary link (fallback) -->
+                    <tr>
+                        <td style="font-size:14px; color:#777; text-align:center; padding-top: 16px;">
+                            If the button doesn’t work, click
+                            <a class="fallback-link" href="{{verify_url}}"
+                                style="font-size: 15px; color:#4a73ff; word-break:break-all; text-decoration:none;"
+                                rel="noopener noreferrer" target="_blank"
+                                aria-label="Fallback link to verify your email for Contacts Manager App">
+                                this link
+                            </a>.
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="font-size:14px; line-height:1.5; color:#999; text-align:center; padding-top:40px;">
+                            If you didn’t create an account, you can safely ignore this email.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="font-size:14px; line-height:1.5; color:#999; text-align:center; padding-top:32px;">
+                            Your Contacts Manager App Team
+                        </td>
+                    </tr>
+                </table>
+                <p style="padding-top: 4px; text-align:center; font-size:12px; color:#aaa;">© {{current_year}} Contacts
+                    Manager
+                    App</p>
+                <!-- End Card -->
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>

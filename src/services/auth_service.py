@@ -50,7 +50,7 @@ class AuthService:
     ):
         """Initialize the service with auth settings from app config."""
         self.access_secret = access_secret or app_config.AUTH_JWT_SECRET
-        self.email_secret = email_secret or app_config.EMAIL_JWT_SECRET
+        self.email_secret = email_secret or app_config.MAIL_JWT_SECRET
         self.alg = algorithm or app_config.AUTH_JWT_ALGORITHM
         self.access_token_exp = (
             access_expiration or app_config.AUTH_JWT_ACCESS_EXPIRATION_SECONDS
@@ -60,7 +60,7 @@ class AuthService:
         )
         self.email_confirmation_token_exp = (
             email_confirmation_expiration
-            or app_config.EMAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS
+            or app_config.MAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS
         )
 
     def create_access_token(self, user_id: int) -> str:

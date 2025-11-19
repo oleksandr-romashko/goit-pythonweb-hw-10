@@ -4,12 +4,12 @@ Auth API endpoints.
 Provides operations for user registration and authentication.
 """
 
-from fastapi import APIRouter, Depends, status, Response
+from fastapi import APIRouter, Depends, status, Request, Response, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config import app_config
 from src.db.models import User
-from src.services import AuthService, UserService, ContactService
+from src.services import AuthService, UserService, ContactService, MailService
 from src.services.errors import (
     UserConflictError,
     InvalidUserCredentialsError,
@@ -26,6 +26,7 @@ from src.utils.logger import logger
 from src.api.dependencies import (
     get_auth_service,
     get_contacts_service,
+    get_mail_service,
     get_user_service,
 )
 from src.api.errors import raise_http_401_error, raise_http_409_error
@@ -60,33 +61,51 @@ router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
 )
 async def register_user(
     body: UserRegisterRequestSchema,
+    request: Request,
     response: Response,
+    background_tasks: BackgroundTasks,
+    auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
+    mail_service: MailService = Depends(get_mail_service),
 ) -> UserRegisteredResponseSchema:
     """Create a new user."""
 
-    # Check for reserved names
+    # Check for restricted reserved user names
     if body.username.lower() in app_config.effective_reserved_usernames:
         raise_http_409_error(MESSAGE_ERROR_USERNAME_IS_RESERVED)
 
+    # Create a new user in the database
     try:
         user: User = await user_service.register_user(
             body.username, body.email, body.password
+        )
+        logger.info(
+            "Created a new user with id = %s and username '%s'.", user.id, user.username
         )
     except UserConflictError as exc:
         logger.info(exc)
         raise_http_409_error(detail=exc.errors)
 
+    # Prepare response data
+    response.headers["Location"] = "/api/users/me"
     data = UserRegisteredResponseSchema.model_validate(user)
 
-    # Add number of user contacts
+    # Add number of user contacts to the response
     data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
-    logger.info(
-        "Created a new user with id = %s and username '%s'.", user.id, user.username
+    # Send email verification email in background
+    verify_email_token = auth_service.create_email_confirmation_token(
+        user.id, user.email
     )
-    response.headers["Location"] = "/api/users/me"
+    background_tasks.add_task(
+        mail_service.send_registration_welcome_email,
+        user.email,
+        user.username,
+        str(request.base_url),
+        verify_email_token,
+    )
+
     return data
 
 

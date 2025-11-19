@@ -14,8 +14,9 @@ from .db_dependencies import (
 )
 from .service_dependencies import (
     get_auth_service,
-    get_user_service,
     get_contacts_service,
+    get_mail_service,
+    get_user_service,
 )
 from .token_dependencies import get_current_user_id
 
@@ -29,7 +30,8 @@ __all__ = [
     "get_current_superadmin_user",
     "get_db_session",
     "get_auth_service",
-    "get_user_service",
     "get_contacts_service",
+    "get_mail_service",
+    "get_user_service",
     "get_current_user_id",
 ]

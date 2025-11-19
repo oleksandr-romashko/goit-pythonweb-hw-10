@@ -12,6 +12,7 @@ from typing import List
 import tomllib
 
 from dotenv import load_dotenv
+from pydantic import SecretStr
 
 from src.utils.logger import logger
 from src.utils.constants import (
@@ -19,7 +20,8 @@ from src.utils.constants import (
     DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL,
     DEFAULT_DB_APP_USER_PASSWORD,
     DEFAULT_AUTH_JWT_SECRET,
-    DEFAULT_EMAIL_JWT_SECRET,
+    DEFAULT_MAIL_JWT_SECRET,
+    DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
 )
 
@@ -94,10 +96,17 @@ class Config:
         return self.RESERVED_USERNAMES - {self.SUPERADMIN_USERNAME.lower()}
 
     # Email settings
-    EMAIL_JWT_SECRET = os.getenv("EMAIL_JWT_SECRET", default="")
-    EMAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS = int(
-        os.getenv("EMAIL_JWT_EXPIRATION_SECONDS", default="86400")
+    MAIL_JWT_SECRET = os.getenv("MAIL_JWT_SECRET", default="")
+    MAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS = int(
+        os.getenv("MAIL_JWT_EXPIRATION_SECONDS", default="604800")
     )
+    MAIL_SERVER = os.getenv("MAIL_SERVER", default="smtp.meta.ua")
+    MAIL_PORT = os.getenv("MAIL_PORT", default="465")
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", default="")
+    MAIL_PASSWORD = SecretStr(os.getenv("MAIL_PASSWORD", default=""))
+    MAIL_FROM = os.getenv("MAIL_FROM", default=MAIL_USERNAME)
+    MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", default="Rest API Service")
+    template_dir: Path = Path(BASE_DIR / "src" / "templates").resolve()
 
     # Domain logic settings
 
@@ -165,13 +174,16 @@ required_vars = [
     "DB_APP_USER_PASSWORD",
     "DB_ADMIN_PANEL_PASSWORD",
     "AUTH_JWT_SECRET",
-    "EMAIL_JWT_SECRET",
+    "MAIL_JWT_SECRET",
+    "MAIL_USERNAME",
+    "MAIL_PASSWORD",
 ]
 default_values = [
     DEFAULT_DB_ADMIN_USER_PASSWORD,
     DEFAULT_DB_APP_USER_PASSWORD,
     DEFAULT_AUTH_JWT_SECRET,
-    DEFAULT_EMAIL_JWT_SECRET,
+    DEFAULT_MAIL_JWT_SECRET,
+    DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
 ]
 errors = []
