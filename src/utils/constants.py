@@ -40,6 +40,8 @@ MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
 
 MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
+MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED = "Email verification is required"
+MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_CONFIRMED = "User email is already confirmed"
 MESSAGE_ERROR_USER_NOT_FOUND = "User not found"
 MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED = "User view is restricted"
 MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED = "User deletion is restricted"

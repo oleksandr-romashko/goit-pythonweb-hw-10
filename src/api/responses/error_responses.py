@@ -15,6 +15,8 @@ from src.utils.constants import (
 from src.api.schemas.errors import (
     ImproperTokenErrorResponse,
     InvalidTokenCredentialsErrorResponse,
+    InvalidLoginCredentialsErrorResponse,
+    EmailNotVerifiedErrorResponse,
     UserIsInactiveErrorResponse,
     BadEmptyValuesRequestErrorResponse,
     BadMeValuesRequestErrorResponse,
@@ -61,6 +63,30 @@ ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES: Dict = {
                     "Bad request values": {
                         "summary": "Combined details on bad password and email fields",
                         "value": BadMeValuesRequestErrorResponse.generate_example_recursive(),
+                    },
+                },
+            }
+        },
+    },
+}
+
+
+ON_LOGIN_USER_ERRORS_RESPONSES: Dict = {
+    401: {
+        "description": "Unauthorized - invalid login credentials or unverified email",
+        "model": Union[
+            InvalidLoginCredentialsErrorResponse, EmailNotVerifiedErrorResponse
+        ],
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Invalid credentials": {
+                        "summary": "Invalid username or password",
+                        "value": InvalidLoginCredentialsErrorResponse.generate_example_recursive(),
+                    },
+                    "Email not verified": {
+                        "summary": "Email verification required",
+                        "value": EmailNotVerifiedErrorResponse.generate_example_recursive(),
                     },
                 },
             }

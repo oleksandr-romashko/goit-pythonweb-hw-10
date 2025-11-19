@@ -9,6 +9,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config import app_config
 from src.db.models import User
+from src.db.models.enums import UserRole
 from src.services import AuthService, UserService, ContactService, MailService
 from src.services.errors import (
     UserConflictError,
@@ -19,6 +20,7 @@ from src.utils.constants import (
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
+    MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
 )
 from src.utils.logger import logger
 
@@ -30,7 +32,10 @@ from src.api.dependencies import (
     get_user_service,
 )
 from src.api.errors import raise_http_401_error, raise_http_409_error
-from src.api.responses.error_responses import ON_USER_REGISTER_CONFLICT_RESPONSE
+from src.api.responses.error_responses import (
+    ON_USER_REGISTER_CONFLICT_RESPONSE,
+    ON_LOGIN_USER_ERRORS_RESPONSES,
+)
 from src.api.schemas.auth import (
     RefreshTokenRequestSchema,
     AccessTokenResponseSchema,
@@ -119,6 +124,7 @@ async def register_user(
     response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully authenticated user.",
+    responses={**ON_LOGIN_USER_ERRORS_RESPONSES},
 )
 async def login_user(
     body: UserLoginRequestSchema,
@@ -141,6 +147,7 @@ async def login_user(
     response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully authenticated user.",
+    responses={**ON_LOGIN_USER_ERRORS_RESPONSES},
 )
 async def oauth2_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -227,6 +234,15 @@ async def _authenticate_and_issue_token(
         )
         raise_http_401_error(MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS)
 
+    # Check if user email is confirmed (except for superadmin)
+    if not user.is_email_confirmed and user.role is not UserRole.SUPERADMIN:
+        logger.debug(
+            "Failed login attempt: Email not verified for username '%s' (user_id=%s).",
+            username,
+            user.id,
+        )
+        raise_http_401_error(MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED)
+
     # Generate access and refresh tokens
     access_token = auth_service.create_access_token(user.id)
     refresh_token = auth_service.create_refresh_token(user.id)
@@ -241,6 +257,7 @@ async def _authenticate_and_issue_token(
         user.role,
         user.is_active,
     )
+
     return LoginTokenResponseSchema(
         access_token=access_token,
         refresh_token=refresh_token,

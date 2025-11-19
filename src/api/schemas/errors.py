@@ -4,10 +4,12 @@ from pydantic import BaseModel, Field
 
 
 from src.utils.constants import (
+    MESSAGE_ERROR_BAD_REQUEST_EMPTY,
     MESSAGE_ERROR_NOT_AUTHENTICATED,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS,
-    MESSAGE_ERROR_BAD_REQUEST_EMPTY,
+    MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
+    MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
     MESSAGE_ERROR_ACCESS_DENIED,
     MESSAGE_ERROR_INACTIVE_USER,
     MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
@@ -69,6 +71,22 @@ class InvalidTokenCredentialsErrorResponse(ErrorResponse):
 
     detail: str = Field(
         json_schema_extra={"example": MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS},
+    )
+
+
+class InvalidLoginCredentialsErrorResponse(ErrorResponse):
+    """Error for 401 Unauthorized when user login failed due to invalid credentials."""
+
+    detail: str = Field(
+        json_schema_extra={"example": MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS}
+    )
+
+
+class EmailNotVerifiedErrorResponse(ErrorResponse):
+    """Error for 401 Unauthorized when login failed because user email is not verified."""
+
+    detail: str = Field(
+        json_schema_extra={"example": MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED}
     )
 
 
