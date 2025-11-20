@@ -3,6 +3,7 @@
 from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
+    MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
 )
 
 
@@ -56,6 +57,13 @@ class UserRolePermissionError(Exception):
     """Raised when operation can't be done with this role."""
 
     def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS):
+        super().__init__(message)
+
+
+class UserEmailIsAlreadyConfirmedError(Exception):
+    """Raised when trying to confirm an already confirmed email."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED):
         super().__init__(message)
 
 

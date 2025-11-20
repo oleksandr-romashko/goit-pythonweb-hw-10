@@ -23,6 +23,7 @@ from .errors import (
     UserConflictError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
+    UserEmailIsAlreadyConfirmedError,
 )
 
 
@@ -138,6 +139,39 @@ class UserService:
             role=role,
             is_active=is_active,
         )
+
+    async def confirm_user_email(self, user_id: int, email: str) -> User:
+        """
+        Validate that the user exists, matches the token data, and confirm email.
+
+        Raises:
+            InvalidUserCredentialsError: if user not found or email doesn't match
+            UserEmailIsAlreadyConfirmedError: if user email has been confirmed already
+        """
+        user = await self.repo.get_user_by_id(user_id)
+        if not user:
+            raise InvalidUserCredentialsError(
+                f"User with provided user_id={user_id} not found"
+            )
+
+        if user.email != email:
+            raise InvalidUserCredentialsError(
+                "Token email does not match current user email"
+            )
+
+        if user.is_email_confirmed:
+            raise UserEmailIsAlreadyConfirmedError()
+
+        updated_user = await self.repo.confirm_user_email_by_id(user_id)
+        if not updated_user:
+            # happens only if someone confirmed email in parallel
+            raise InvalidUserCredentialsError(
+                f"Failed to confirm email for user_id={user_id}"
+            )
+
+        logger.info("User email confirmed for user %s", UserDTO.from_orm(updated_user))
+
+        return updated_user
 
     async def get_all_users(
         self, requester: UserDTO, pagination: Dict[str, int], filters: Dict[str, Any]
@@ -586,6 +620,7 @@ class UserService:
             "avatar": avatar,
             "is_active": is_active,
             "role": role,
+            "is_email_confirmed": False,
         }
         new_user = await self.repo.create_user(new_user_data)
 

@@ -4,6 +4,8 @@ from typing import Optional, Any
 
 from pydantic import BaseModel, Field, SecretStr
 
+from src.utils.constants import MESSAGE_SUCCESS_EMAIL_VERIFIED
+
 
 def TokenField(  # pylint: disable=invalid-name
     optional: bool = False,
@@ -64,3 +66,12 @@ class AccessTokenResponseSchema(BaseModel):
         example="<ACCESS_TOKEN>",
     )
     token_type: str = TokenTypeField()
+
+
+class EmailVerificationSuccessResponseSchema(BaseModel):
+    """Response schema for successful email verification."""
+
+    detail: str = Field(
+        description="JWT token",
+        json_schema_extra={"example": MESSAGE_SUCCESS_EMAIL_VERIFIED},
+    )

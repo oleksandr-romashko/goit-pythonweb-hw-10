@@ -8,6 +8,7 @@ from .services_errors import (
     UserRoleIsInvalidError,
     UserRolePermissionError,
     UserViewPermissionError,
+    UserEmailIsAlreadyConfirmedError,
 )
 
 __all__ = [
@@ -18,4 +19,5 @@ __all__ = [
     "UserRoleIsInvalidError",
     "UserRolePermissionError",
     "UserViewPermissionError",
+    "UserEmailIsAlreadyConfirmedError",
 ]

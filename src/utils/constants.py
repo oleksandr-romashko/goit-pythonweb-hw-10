@@ -5,6 +5,9 @@ Shared constants for error messages and other reusable values.
 # Auth
 AUTH_PASSWORD_SPECIAL_CHARS = "!@#$%^&*()_+-=[]{};':\"\\|,.<>/?"
 
+# Success messages
+MESSAGE_SUCCESS_EMAIL_VERIFIED = "Email verified successfully"
+
 # Error messages
 MESSAGE_ERROR_DB_CONNECTION_ERROR = "Error connecting to the database"
 MESSAGE_ERROR_DB_INVALID_CONFIG = "Database is not configured correctly"
@@ -12,6 +15,7 @@ MESSAGE_ERROR_DB_INVALID_CONFIG = "Database is not configured correctly"
 MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS = "Invalid username or password"
 MESSAGE_ERROR_NOT_AUTHENTICATED = "Not authenticated"
 MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN = "Invalid or expired refresh token"
+MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN = "Invalid or expired mail token"
 MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS = "Invalid authentication credentials"
 MESSAGE_ERROR_INACTIVE_USER = "Inactive user"
 MESSAGE_ERROR_UNAUTHORIZED = "Unauthorized"
@@ -24,6 +28,7 @@ MESSAGE_ERROR_ADMIN_CANNOT_CREATE_ADMIN = (
 
 MESSAGE_ERROR_BAD_REQUEST = "Bad request"
 MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for update"
+MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN = "Bad request: Missing token parameter"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
 MESSAGE_ERROR_TOO_MANY_REQUESTS = (
@@ -41,7 +46,7 @@ MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
 MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
 MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED = "Email verification is required"
-MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_CONFIRMED = "User email is already confirmed"
+MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED = "User email is already verified"
 MESSAGE_ERROR_USER_NOT_FOUND = "User not found"
 MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED = "User view is restricted"
 MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED = "User deletion is restricted"

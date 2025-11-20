@@ -4,23 +4,37 @@ Auth API endpoints.
 Provides operations for user registration and authentication.
 """
 
-from fastapi import APIRouter, Depends, status, Request, Response, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    Depends,
+    status,
+    Request,
+    Query,
+    Response,
+    BackgroundTasks,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 
 from src.config import app_config
 from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import AuthService, UserService, ContactService, MailService
+from src.services.dtos import UserDTO
 from src.services.errors import (
     UserConflictError,
     InvalidUserCredentialsError,
+    UserEmailIsAlreadyConfirmedError,
     InvalidTokenError,
 )
 from src.utils.constants import (
+    MESSAGE_SUCCESS_EMAIL_VERIFIED,
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
+    MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
+    MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
 )
 from src.utils.logger import logger
 
@@ -31,15 +45,21 @@ from src.api.dependencies import (
     get_mail_service,
     get_user_service,
 )
-from src.api.errors import raise_http_401_error, raise_http_409_error
+from src.api.errors import (
+    raise_http_400_error,
+    raise_http_401_error,
+    raise_http_409_error,
+)
 from src.api.responses.error_responses import (
     ON_USER_REGISTER_CONFLICT_RESPONSE,
+    ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE,
     ON_LOGIN_USER_ERRORS_RESPONSES,
 )
 from src.api.schemas.auth import (
     RefreshTokenRequestSchema,
     AccessTokenResponseSchema,
     LoginTokenResponseSchema,
+    EmailVerificationSuccessResponseSchema,
 )
 from src.api.schemas.users.requests import (
     UserRegisterRequestSchema,
@@ -214,6 +234,55 @@ async def issue_access_token_on_refresh_token(
         access_token=access_token,
         token_type="bearer",
     )
+
+
+@router.get(
+    "/verify-email/",
+    summary="Verify user email using email verification token",
+    response_model=EmailVerificationSuccessResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successfully verified user email.",
+    responses={**ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE},
+)
+async def verify_email(
+    token: str = Query(..., description="Email verification token"),
+    auth_service: AuthService = Depends(get_auth_service),
+    user_service: UserService = Depends(get_user_service),
+) -> dict[str, str]:
+    """Confirm user email based on email verification token."""
+    # Decode token to get username and email
+    try:
+        token_data = auth_service.decode_email_verification_token(token)
+    except InvalidTokenError as exc:
+        logger.debug("Can't verify user email: %s", str(exc))
+        raise_http_400_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN)
+
+    user_id = int(token_data["sub"])
+    email = token_data["email"]
+
+    # Confirm user email
+    try:
+        user = await user_service.confirm_user_email(user_id, email)
+    except InvalidUserCredentialsError as exc:
+        logger.debug(
+            "Can't verify user email for user_id=%s and email=%s: %s",
+            user_id,
+            email,
+            str(exc),
+        )
+        raise_http_400_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN)
+    except UserEmailIsAlreadyConfirmedError as exc:
+        logger.debug(
+            "Can't verify previously verified email for user_id=%s and email=%s: %s",
+            user_id,
+            email,
+            str(exc),
+        )
+        raise_http_400_error(MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED)
+
+    logger.info("Email verified for %s", UserDTO.from_orm(user))
+
+    return {"detail": MESSAGE_SUCCESS_EMAIL_VERIFIED}
 
 
 async def _authenticate_and_issue_token(

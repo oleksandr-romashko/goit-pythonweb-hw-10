@@ -19,6 +19,8 @@ from src.api.schemas.errors import (
     EmailNotVerifiedErrorResponse,
     UserIsInactiveErrorResponse,
     BadEmptyValuesRequestErrorResponse,
+    InvalidTokenRequestErrorResponse,
+    EmailIsVerifiedErrorResponse,
     BadMeValuesRequestErrorResponse,
     AccessDeniedErrorResponse,
     AccessDeniedInvalidRoleErrorResponse,
@@ -40,6 +42,27 @@ ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE: Dict = {
                     "Body is empty": {
                         "summary": "At least one field is required",
                         "value": BadEmptyValuesRequestErrorResponse.generate_example_recursive(),
+                    },
+                },
+            }
+        },
+    },
+}
+
+ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE: Dict = {
+    400: {
+        "description": MESSAGE_ERROR_BAD_REQUEST,
+        "model": Union[InvalidTokenRequestErrorResponse, EmailIsVerifiedErrorResponse],
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Invalid token": {
+                        "summary": "Invalid token",
+                        "value": InvalidTokenRequestErrorResponse.generate_example_recursive(),
+                    },
+                    "Email is already verified": {
+                        "summary": "Email is already verified",
+                        "value": EmailIsVerifiedErrorResponse.generate_example_recursive(),
                     },
                 },
             }

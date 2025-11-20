@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 from src.utils.constants import (
     MESSAGE_ERROR_BAD_REQUEST_EMPTY,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
+    MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
     MESSAGE_ERROR_NOT_AUTHENTICATED,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS,
@@ -33,6 +35,26 @@ class BadEmptyValuesRequestErrorResponse(ErrorResponse):
     detail: str = Field(
         json_schema_extra={
             "example": MESSAGE_ERROR_BAD_REQUEST_EMPTY,
+        },
+    )
+
+
+class InvalidTokenRequestErrorResponse(ErrorResponse):
+    """Error for 400 Bad Request when token is invalid."""
+
+    detail: str = Field(
+        json_schema_extra={
+            "example": MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
+        },
+    )
+
+
+class EmailIsVerifiedErrorResponse(ErrorResponse):
+    """Error for 400 Bad Request when email is verified before."""
+
+    detail: str = Field(
+        json_schema_extra={
+            "example": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
         },
     )
 

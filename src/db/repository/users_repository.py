@@ -8,7 +8,7 @@ This layer encapsulates all database logic, isolating it from business and routi
 
 from typing import Optional, Any, List, Dict, Tuple
 
-from sqlalchemy import select, func, or_, case
+from sqlalchemy import select, update, func, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User, Contact
@@ -187,6 +187,26 @@ class UsersRepository:
         await self.db.refresh(user)
 
         return user
+
+    async def confirm_user_email_by_id(self, user_id: int) -> Optional[User]:
+        """Confirm a user's email, or return None if user not found or confirmed already."""
+        # Use atomic update to avoid race conditions
+        stmt = (
+            update(User)
+            .where(User.id == user_id, User.is_email_confirmed.is_(False))
+            .values(is_email_confirmed=True)
+            .returning(User)  # returns the updated row
+        )
+        result = await self.db.execute(stmt)
+        updated_user = result.scalars().first()
+
+        if updated_user is None:
+            # either no user or email has been confirmed already
+            return None
+
+        await self.db.commit()
+        await self.db.refresh(updated_user)
+        return updated_user
 
     async def remove_user_by_id(self, user_id: int) -> Optional[User]:
         """Remove a user by ID, or return None if not found."""

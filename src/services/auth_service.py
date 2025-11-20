@@ -87,8 +87,21 @@ class AuthService:
             token, AuthTokenType.REFRESH, enforce_numeric_sub=True
         )
 
-    def decode_email_confirmation_token(self, token: str) -> Dict[str, Any]:
-        """Decode and validate a JWT email confirmation token."""
+    def decode_email_verification_token(self, token: str) -> Dict[str, Any]:
+        """
+        Decode and validate a JWT email confirmation token.
+
+        Example decoded token payload:
+        {
+            'token_type': 'email_confirmation_token',  # type of the token
+            'aud': 'email',                            # audience claim
+            'sub': '1',                                # user ID as a string
+            'email': 'user@example.com',               # email associated with the token
+            'jti': '33113437-53a9-46b3-b8e2-...',      # unique token identifier
+            'iat': 1763667153,                         # issued at timestamp
+            'exp': 1763753553                          # expiration timestamp
+        }
+        """
         return self._decode_email_token(
             token, EmailTokenType.CONFIRMATION, enforce_numeric_sub=True
         )
@@ -103,6 +116,10 @@ class AuthService:
 
         Returns:
             str: Encoded JWT token (Base64 string) ready for use in Authorization header.
+
+        Raises:
+            ValueError: If unsupported token type is provided.
+            InvalidAccessTokenError: If the token is invalid or malformed.
         """
 
         if token_type not in AuthTokenType:
@@ -270,6 +287,7 @@ class AuthService:
             Dict[str, Any]: Decoded JWT payload containing user claims.
 
         Raises:
+            ValueError: If unsupported token type is provided.
             InvalidAccessTokenError: If the token is invalid or malformed.
         """
         if token_type not in EmailTokenType:
