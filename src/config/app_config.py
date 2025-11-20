@@ -32,6 +32,7 @@ pyproject_toml_path = BASE_DIR / "pyproject.toml"
 load_dotenv(BASE_DIR / ".env")  # Load variables from .env
 
 
+# TODO: Refactor to from pydantic_settings import BaseSettings and Settings(BaseSettings) class
 class Config:
     """Holds configuration values for the application, such as database URLs."""
 
@@ -44,7 +45,10 @@ class Config:
 
     # API web server settings
     WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
-    DEBUG = os.getenv("DEBUG", default="False") == "True"
+    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
+        "EMAIL_VERIFICATION_REDIRECT_URL", default=""
+    ).strip()
 
     # Database settings
     DB_HOST: str = os.getenv("DB_HOST", default="api-db")

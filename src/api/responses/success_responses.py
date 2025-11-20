@@ -2,6 +2,7 @@
 
 from typing import Dict
 
+from src.api.schemas.auth import EmailVerificationSuccessResponseSchema
 from src.api.schemas.users.responses import (
     UserAboutMeOneOfResponseSchema,
     UserAboutMeResponseSchema,
@@ -9,9 +10,17 @@ from src.api.schemas.users.responses import (
     UserAdminRegisteredUserResponseSchema,
 )
 
+ON_VERIFIED_EMAIL_SUCCESS_RESPONSE: Dict = {
+    200: {
+        "description": "Response on successfully verified user email.",
+        "model": EmailVerificationSuccessResponseSchema,
+    },
+}
+
+
 ON_ME_SUCCESS_RESPONSE: Dict = {
     200: {
-        "description": ("Response on successfully retrieved current user information."),
+        "description": "Response on successfully retrieved current user information.",
         "model": UserAboutMeOneOfResponseSchema,
         "content": {
             "application/json": {
@@ -88,5 +97,21 @@ ON_GET_USER_BY_ID_SUCCESS_RESPONSE: Dict = {
                 }
             }
         },
+    },
+}
+
+ON_VERIFIED_EMAIL_SUCCESS_RESPONSE_WITH_REDIRECT: Dict = {
+    302: {
+        "description": (
+            "Response on successfully verified user email with redirect.\n\n"
+            "E.g. redirect to *https://frontend.example.com/email-verified*"
+        ),
+        "headers": {
+            "Location": {
+                "description": "URL to which the client will be redirected",
+                "schema": {"type": "string"},
+            }
+        },
+        "content": None,
     },
 }

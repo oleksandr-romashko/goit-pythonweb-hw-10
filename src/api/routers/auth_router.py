@@ -13,7 +13,9 @@ from fastapi import (
     Response,
     BackgroundTasks,
 )
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from starlette.status import HTTP_302_FOUND
 
 from src.config import app_config
 from src.db.models import User
@@ -32,7 +34,6 @@ from src.utils.constants import (
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
-    MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
     MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
 )
@@ -50,6 +51,10 @@ from src.api.errors import (
     raise_http_401_error,
     raise_http_409_error,
 )
+from src.api.responses.success_responses import (
+    ON_VERIFIED_EMAIL_SUCCESS_RESPONSE,
+    ON_VERIFIED_EMAIL_SUCCESS_RESPONSE_WITH_REDIRECT,
+)
 from src.api.responses.error_responses import (
     ON_USER_REGISTER_CONFLICT_RESPONSE,
     ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE,
@@ -59,7 +64,6 @@ from src.api.schemas.auth import (
     RefreshTokenRequestSchema,
     AccessTokenResponseSchema,
     LoginTokenResponseSchema,
-    EmailVerificationSuccessResponseSchema,
 )
 from src.api.schemas.users.requests import (
     UserRegisterRequestSchema,
@@ -239,16 +243,25 @@ async def issue_access_token_on_refresh_token(
 @router.get(
     "/verify-email/",
     summary="Verify user email using email verification token",
-    response_model=EmailVerificationSuccessResponseSchema,
-    status_code=status.HTTP_200_OK,
-    response_description="Successfully verified user email.",
-    responses={**ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE},
+    status_code=(
+        status.HTTP_302_FOUND
+        if app_config.EMAIL_VERIFICATION_REDIRECT_URL
+        else status.HTTP_200_OK
+    ),
+    responses={
+        **(
+            ON_VERIFIED_EMAIL_SUCCESS_RESPONSE_WITH_REDIRECT
+            if app_config.EMAIL_VERIFICATION_REDIRECT_URL
+            else ON_VERIFIED_EMAIL_SUCCESS_RESPONSE
+        ),
+        **ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE,
+    },
 )
 async def verify_email(
     token: str = Query(..., description="Email verification token"),
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
-) -> dict[str, str]:
+):
     """Confirm user email based on email verification token."""
     # Decode token to get username and email
     try:
@@ -281,6 +294,10 @@ async def verify_email(
         raise_http_400_error(MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED)
 
     logger.info("Email verified for %s", UserDTO.from_orm(user))
+
+    redirect_url = app_config.EMAIL_VERIFICATION_REDIRECT_URL
+    if redirect_url:
+        return RedirectResponse(url=redirect_url, status_code=HTTP_302_FOUND)
 
     return {"detail": MESSAGE_SUCCESS_EMAIL_VERIFIED}
 

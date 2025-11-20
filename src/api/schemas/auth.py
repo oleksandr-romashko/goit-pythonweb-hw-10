@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, SecretStr
 
 from src.utils.constants import MESSAGE_SUCCESS_EMAIL_VERIFIED
 
+from .mixins import ExampleGenerationMixin
+
 
 def TokenField(  # pylint: disable=invalid-name
     optional: bool = False,
@@ -68,7 +70,7 @@ class AccessTokenResponseSchema(BaseModel):
     token_type: str = TokenTypeField()
 
 
-class EmailVerificationSuccessResponseSchema(BaseModel):
+class EmailVerificationSuccessResponseSchema(ExampleGenerationMixin, BaseModel):
     """Response schema for successful email verification."""
 
     detail: str = Field(
