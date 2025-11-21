@@ -2,6 +2,11 @@
 
 from typing import Dict
 
+from src.utils.constants import (
+    MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT,
+    MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
+)
+
 from src.api.schemas.auth.responses import EmailVerificationSuccessResponseSchema
 from src.api.schemas.users.responses import (
     UserAboutMeOneOfResponseSchema,
@@ -9,6 +14,38 @@ from src.api.schemas.users.responses import (
     UserAboutMeAdminResponseSchema,
     UserAdminRegisteredUserResponseSchema,
 )
+
+ON_RESEND_VERIFICATION_EMAIL_RESPONSE: Dict = {
+    200: {
+        "description": "Result of attempting to resend verification email.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "Verification email sent": {
+                        "summary": "Email exists and needs verification.",
+                        "value": {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT},
+                    },
+                    "Email already verified": {
+                        "summary": "User email is already verified.",
+                        "value": {
+                            "details": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED
+                        },
+                    },
+                    "Non existing user masked": {
+                        "summary": (
+                            "Email not found, but masked as success "
+                            "(security best practice)."
+                        ),
+                        "description": (
+                            "Used to avoid leaking which emails exist in the system."
+                        ),
+                        "value": {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT},
+                    },
+                }
+            }
+        },
+    },
+}
 
 ON_VERIFIED_EMAIL_SUCCESS_RESPONSE: Dict = {
     200: {

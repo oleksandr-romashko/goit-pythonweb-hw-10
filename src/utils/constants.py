@@ -6,6 +6,9 @@ Shared constants for error messages and other reusable values.
 AUTH_PASSWORD_SPECIAL_CHARS = "!@#$%^&*()_+-=[]{};':\"\\|,.<>/?"
 
 # Success messages
+MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT = (
+    "Please check your email for the confirmation letter"
+)
 MESSAGE_SUCCESS_EMAIL_VERIFIED = "Email verified successfully"
 
 # Error messages
@@ -39,14 +42,14 @@ MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED = "Not implemented yet"
 
 MESSAGE_ERROR_FEATURE_IS_PLANNED = "Feature is planned for the implementation"
 
-MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be used."
+MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be used"
 
 MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
 
 MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
 MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED = "Email verification is required"
-MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED = "User email is already verified"
+MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED = "Your email is already verified."
 MESSAGE_ERROR_USER_NOT_FOUND = "User not found"
 MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED = "User view is restricted"
 MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED = "User deletion is restricted"

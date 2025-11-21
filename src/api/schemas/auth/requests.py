@@ -4,9 +4,16 @@ Pydantic schemas for auth operations.
 Includes request models.
 """
 
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, EmailStr, SecretStr
 
+from src.api.schemas.common.fields import EmailField
 from .fields import TokenField
+
+
+class EmailRequestSchema(BaseModel):
+    """Request schema containing email address."""
+
+    email: EmailStr = EmailField()
 
 
 class RefreshTokenRequestSchema(BaseModel):

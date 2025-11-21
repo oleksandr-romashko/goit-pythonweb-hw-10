@@ -4,6 +4,8 @@ Auth API endpoints.
 Provides operations for user registration and authentication.
 """
 
+from typing import Optional, Dict
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -29,13 +31,14 @@ from src.services.errors import (
     InvalidTokenError,
 )
 from src.utils.constants import (
+    MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT,
     MESSAGE_SUCCESS_EMAIL_VERIFIED,
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
     MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
-    MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
     MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
 )
 from src.utils.logger import logger
 
@@ -43,7 +46,6 @@ from src.utils.logger import logger
 from src.api.dependencies import (
     get_auth_service,
     get_contacts_service,
-    get_mail_service,
     get_user_service,
 )
 from src.api.errors import (
@@ -54,13 +56,14 @@ from src.api.errors import (
 from src.api.responses.success_responses import (
     ON_VERIFIED_EMAIL_SUCCESS_RESPONSE,
     ON_VERIFIED_EMAIL_SUCCESS_RESPONSE_WITH_REDIRECT,
+    ON_RESEND_VERIFICATION_EMAIL_RESPONSE,
 )
 from src.api.responses.error_responses import (
     ON_USER_REGISTER_CONFLICT_RESPONSE,
     ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE,
     ON_LOGIN_USER_ERRORS_RESPONSES,
 )
-from src.api.schemas.auth.requests import RefreshTokenRequestSchema
+from src.api.schemas.auth.requests import EmailRequestSchema, RefreshTokenRequestSchema
 from src.api.schemas.auth.responses import (
     AccessTokenResponseSchema,
     LoginTokenResponseSchema,
@@ -93,10 +96,8 @@ async def register_user(
     request: Request,
     response: Response,
     background_tasks: BackgroundTasks,
-    auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
-    mail_service: MailService = Depends(get_mail_service),
 ) -> UserRegisteredResponseSchema:
     """Create a new user."""
 
@@ -123,19 +124,47 @@ async def register_user(
     # Add number of user contacts to the response
     data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
-    # Send email verification email in background
-    verify_email_token = auth_service.create_email_confirmation_token(
-        user.id, user.email
-    )
-    background_tasks.add_task(
-        mail_service.send_registration_welcome_email,
-        user.email,
-        user.username,
-        str(request.base_url),
-        verify_email_token,
-    )
+    # Send email verification email
+    _send_verification_email(user, str(request.base_url), background_tasks)
 
     return data
+
+
+@router.post(
+    "/resend-verification-email",
+    summary="Resend verification email",
+    description="Send a verification email to the provided email address.",
+    response_description="Successfully sent verification email.",
+    responses={**ON_RESEND_VERIFICATION_EMAIL_RESPONSE},
+)
+async def resend_verification_email(
+    body: EmailRequestSchema,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    user_service: UserService = Depends(get_user_service),
+) -> Dict[str, str]:
+    """Resend verification email to the user email address."""
+
+    user: Optional[User] = await user_service.get_user_by_email(body.email)
+
+    if not user:
+        # Security best practice: don't reveal whether the email exists.
+        logger.info(
+            "Attempt to resend verification email to a non-existing user email: %s",
+            body.email,
+        )
+        return {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT}
+
+    if user.is_email_confirmed:
+        logger.debug(
+            "Can't resend verification email for user whose email is already verified: %s",
+            UserDTO.from_orm(user),
+        )
+        return {"details": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED}
+
+    _send_verification_email(user, str(request.base_url), background_tasks)
+
+    return {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT}
 
 
 @router.post(
@@ -300,6 +329,31 @@ async def verify_email(
         return RedirectResponse(url=redirect_url, status_code=HTTP_302_FOUND)
 
     return {"detail": MESSAGE_SUCCESS_EMAIL_VERIFIED}
+
+
+def _send_verification_email(
+    user: User,
+    base_url: str,
+    background_tasks: BackgroundTasks,
+) -> None:
+    """Send email verification email"""
+    auth_service = AuthService()
+    mail_service = MailService()
+
+    # Note: token is not persistent (no side-effects in database),
+    #       still it is more safe and best practice to to handle its creation
+    #       outside of background_tasks and sending of an email
+    email_verification_token = auth_service.create_email_confirmation_token(
+        user.id, user.email
+    )
+
+    background_tasks.add_task(
+        mail_service.send_registration_welcome_email,
+        user.email,
+        user.username,
+        base_url,
+        email_verification_token,
+    )
 
 
 async def _authenticate_and_issue_token(
