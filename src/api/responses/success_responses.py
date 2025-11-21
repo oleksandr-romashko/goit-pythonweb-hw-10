@@ -2,7 +2,7 @@
 
 from typing import Dict
 
-from src.api.schemas.auth import EmailVerificationSuccessResponseSchema
+from src.api.schemas.auth.responses import EmailVerificationSuccessResponseSchema
 from src.api.schemas.users.responses import (
     UserAboutMeOneOfResponseSchema,
     UserAboutMeResponseSchema,

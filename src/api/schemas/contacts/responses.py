@@ -1,8 +1,7 @@
 """
 Pydantic schemas for contact operations.
 
-Includes request/response models for creating, updating,
-and retrieving contacts, plus models for special responses.
+Includes response models.
 """
 
 from datetime import date

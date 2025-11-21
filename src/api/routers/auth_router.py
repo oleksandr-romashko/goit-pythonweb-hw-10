@@ -60,8 +60,8 @@ from src.api.responses.error_responses import (
     ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE,
     ON_LOGIN_USER_ERRORS_RESPONSES,
 )
-from src.api.schemas.auth import (
-    RefreshTokenRequestSchema,
+from src.api.schemas.auth.requests import RefreshTokenRequestSchema
+from src.api.schemas.auth.responses import (
     AccessTokenResponseSchema,
     LoginTokenResponseSchema,
 )

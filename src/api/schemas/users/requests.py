@@ -1,4 +1,8 @@
-"""Pydantic schemas for users operations."""
+"""
+Pydantic schemas for users operations.
+
+Includes request models.
+"""
 
 from typing import Optional
 
