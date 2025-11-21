@@ -12,10 +12,10 @@ from pydantic import BaseModel, EmailStr
 from src.api.schemas.validators.common import at_least_one_field_required_validator
 from src.api.schemas.validators.contacts import birthdate_not_in_the_future_validator
 
+from src.api.schemas.common.fields import EmailField
 from .fields import (
     FirstNameField,
     LastNameField,
-    EmailField,
     PhoneNumberField,
     BirthdateField,
     InfoField,

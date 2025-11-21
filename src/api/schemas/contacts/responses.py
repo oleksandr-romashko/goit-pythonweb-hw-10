@@ -10,10 +10,10 @@ from pydantic import BaseModel, EmailStr
 
 from src.api.schemas.mixins import FromOrmAttributesConfig, IdMixin, TimestampsMixin
 
+from src.api.schemas.common.fields import EmailField
 from .fields import (
     FirstNameField,
     LastNameField,
-    EmailField,
     PhoneNumberField,
     BirthdateField,
     InfoField,

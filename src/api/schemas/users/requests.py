@@ -19,10 +19,10 @@ from src.api.schemas.validators.users import (
     user_role_exists_validator,
 )
 
+from src.api.schemas.common.fields import EmailField
 from .enums import UserFilterRole
 from .fields import (
     UsernameField,
-    EmailField,
     PasswordField,
     AvatarField,
     RoleField,

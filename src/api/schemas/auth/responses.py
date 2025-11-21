@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field
 from src.utils.constants import MESSAGE_SUCCESS_EMAIL_VERIFIED
 
 from src.api.schemas.mixins import ExampleGenerationMixin
-
 from .fields import TokenField, TokenTypeField
 
 

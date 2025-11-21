@@ -12,16 +12,15 @@ from pydantic import (
     EmailStr,
 )
 
+from src.api.schemas.common.fields import EmailField
 from src.api.schemas.mixins import (
     IdMixin,
     FromOrmAttributesConfig,
     TimestampsMixin,
     ExampleGenerationMixin,
 )
-
 from .fields import (
     UsernameField,
-    EmailField,
     AvatarField,
     RoleField,
     ContactsCountField,
