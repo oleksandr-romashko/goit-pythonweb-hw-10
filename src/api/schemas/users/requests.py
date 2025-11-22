@@ -27,7 +27,7 @@ from .fields import (
     AvatarField,
     RoleField,
     IsActiveField,
-    InactiveLastField,
+    InactiveLastSortField,
 )
 
 
@@ -128,4 +128,4 @@ class UsersFilterRequestSchema(BaseModel):
         description=("Filter by active status"),
     )
 
-    inactive_last: bool = InactiveLastField(default=False)
+    inactive_last: bool = InactiveLastSortField(default=False)

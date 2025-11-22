@@ -48,6 +48,18 @@ def AvatarField(optional: bool = False) -> Any:  # pylint: disable=invalid-name
     )
 
 
+def IsEmailConfirmedField(  # pylint: disable=invalid-name
+    optional: bool = False,
+) -> Any:  # pylint: disable=invalid-name
+    """Construct email confirmation status field with value example"""
+
+    return Field(
+        None if optional else ...,
+        description="Email confirmation status",
+        json_schema_extra={"example": True},
+    )
+
+
 def RoleField(  # pylint: disable=invalid-name
     optional: bool = False,
     default: Optional[str] = None,
@@ -86,20 +98,6 @@ def IsActiveField(  # pylint: disable=invalid-name
     )
 
 
-def InactiveLastField(  # pylint: disable=invalid-name
-    optional: bool = False,
-    default: Optional[bool] = False,
-    description: Optional[str] = None,
-) -> Any:
-    """Construct flag field to show inactive users last with value example"""
-
-    return Field(
-        None if optional else default,
-        description=description or "Show inactive users last",
-        json_schema_extra={"example": default or False},
-    )
-
-
 def ContactsField(  # pylint: disable=invalid-name
     optional: bool = False,
 ) -> Any:
@@ -121,4 +119,18 @@ def ContactsCountField(  # pylint: disable=invalid-name
         None if optional else 0,
         description="Number of associated contacts",
         json_schema_extra={"example": 42},
+    )
+
+
+def InactiveLastSortField(  # pylint: disable=invalid-name
+    optional: bool = False,
+    default: Optional[bool] = False,
+    description: Optional[str] = None,
+) -> Any:
+    """Construct flag field to show inactive users last with value example"""
+
+    return Field(
+        None if optional else default,
+        description=description or "Show inactive users last",
+        json_schema_extra={"example": default or False},
     )

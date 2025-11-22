@@ -24,6 +24,7 @@ from .fields import (
     AvatarField,
     RoleField,
     ContactsCountField,
+    IsEmailConfirmedField,
     IsActiveField,
 )
 
@@ -58,6 +59,7 @@ class UserAboutMeResponseSchema(UserResponseSchema, IdMixin):
     """Response schema to represent information about the current user."""
 
     contacts_count: int = ContactsCountField()
+    is_email_confirmed: bool = IsEmailConfirmedField()
 
 
 class UserAboutMeAdminResponseSchema(
