@@ -70,7 +70,8 @@ class UserLoginRequestSchema(BaseModel):
 class UserUpdateRequestSchema(BaseModel):
     """Schema for updating existing user by regular user."""
 
-    email: Optional[EmailStr] = EmailField(optional=True)
+    # Email change is forbidden unless email change flow is implemented
+    # email: Optional[EmailStr] = EmailField(optional=True)
     old_password: Optional[str] = PasswordField(
         optional=True, description="Old password to validate", example="OldStrongPass1!"
     )
@@ -91,7 +92,8 @@ class UserUpdateAdminRequestSchema(BaseModel):
     """Schema for updating existing user by admin user."""
 
     username: Optional[str] = UsernameField(optional=True)
-    email: Optional[EmailStr] = EmailField(optional=True)
+    # Email change is forbidden unless email change flow is implemented
+    # email: Optional[EmailStr] = EmailField(optional=True)
     avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
     role: Optional[str] = RoleField(optional=True)

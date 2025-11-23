@@ -3,8 +3,10 @@
 from .services_errors import (
     BadProvidedDataError,
     InvalidUserCredentialsError,
+    UserInactiveError,
     UserConflictError,
     InvalidTokenError,
+    EmailChangeNotAllowedError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
     UserViewPermissionError,
@@ -14,8 +16,10 @@ from .services_errors import (
 __all__ = [
     "BadProvidedDataError",
     "InvalidUserCredentialsError",
+    "UserInactiveError",
     "UserConflictError",
     "InvalidTokenError",
+    "EmailChangeNotAllowedError",
     "UserRoleIsInvalidError",
     "UserRolePermissionError",
     "UserViewPermissionError",

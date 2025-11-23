@@ -11,6 +11,7 @@ from src.services import UserService, ContactService
 from src.services.dtos import UserDTO
 from src.services.errors import (
     UserConflictError,
+    EmailChangeNotAllowedError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
     UserViewPermissionError,
@@ -19,7 +20,9 @@ from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
+    MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN,
 )
+from src.utils.logger import logger
 
 from src.api.dependencies import (
     get_current_active_admin_user,
@@ -229,7 +232,7 @@ async def get_user_by_id(
         **ON_USER_NOT_FOUND_OR_VIEW_RESTRICTED_RESPONSE,
     },
 )
-async def patch_user(
+async def update_user(
     user_id: int,
     body: UserUpdateAdminRequestSchema,
     user: User = Depends(get_current_active_admin_user()),
@@ -252,6 +255,9 @@ async def patch_user(
             update_data=update_payload,
             contacts_service=contacts_service,
         )
+    except EmailChangeNotAllowedError as exc:
+        logger.info(exc)
+        raise_http_403_error(MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN)
     except UserRolePermissionError as exc:
         raise_http_403_error(
             f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"

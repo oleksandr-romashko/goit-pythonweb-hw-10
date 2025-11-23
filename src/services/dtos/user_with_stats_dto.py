@@ -16,6 +16,7 @@ class UserWithStatsDTO:
     username: str
     email: Optional[str]
     role: UserRole
+    is_email_confirmed: bool
     is_active: Optional[bool]
     avatar: Optional[str]
     contacts_count: Optional[int]
@@ -36,6 +37,7 @@ class UserWithStatsDTO:
             username=user.username,
             email=user.email if not hide_email else None,
             role=user.role,
+            is_email_confirmed=user.is_email_confirmed,
             is_active=user.is_active if not hide_personal else None,
             avatar=user.avatar,
             created_at=user.created_at if not hide_personal else None,

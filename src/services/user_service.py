@@ -9,7 +9,7 @@ from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.services.dtos import UserDTO
-from src.services.errors import UserConflictError
+from src.services.errors import UserInactiveError, UserConflictError
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
@@ -21,12 +21,38 @@ from .errors import (
     BadProvidedDataError,
     InvalidUserCredentialsError,
     UserConflictError,
+    EmailChangeNotAllowedError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
     UserEmailIsAlreadyConfirmedError,
 )
 
 
+# TODO: Add email change flow
+# ? Follow "Email change flow" marks in the code
+# TODO: Separate module to follow SRP:
+# e.g. src/services/user/ package
+# * ├─ __init__.py  # reexport of the facade (UserService) if necessary
+# * ├─ creation.py  # create_superuser, register_user, _create_user_common
+# * ├─ update.py    # update_current_user, update_user_by_admin, update_user_by_admin_helpers
+# * ├─ queries.py   # get_user_by_id, get_all_users, get_user_by_email/username
+# * ├─ security.py  # confirm_user_email, password helpers, email flow helpers
+# * ├─ delete.py    # delete_user_by_admin
+# * └─ policies.py  # RolePolicy (at first stages may be simple)
+# TODO: introduce RolePolicy class to handle all RolePolicy / PermissionGuard
+# RolePolicy.ensure_can_modify(requester, target, field="role")
+# RolePolicy.ensure_can_delete(requester, target)
+# RolePolicy.ensure_can_create(requester, role)
+# * I.e.:
+# * "Users cannot update users"
+# * "Moderators cannot update users"
+# * "Admins cannot update admins"
+# * "Non-superadmin cannot modify superadmin"
+# * "Superadmin cannot downgrade superadmin"
+# * "Admins cannot delete admins or superadmins"
+# * "Superadmin cannot delete superadmin"
+# * "Admins cannot create admins"
+# * "Moderators cannot create users"
 class UserService:
     """Handles business logic related to users."""
 
@@ -154,6 +180,14 @@ class UserService:
                 f"User with provided user_id={user_id} not found"
             )
 
+        # Check if user is active before confirming
+        if not user.is_active:
+            logger.warning(
+                "Attempt to confirm email for inactive user %s",
+                UserDTO.from_orm(user),
+            )
+            raise UserInactiveError("Cannot confirm email for inactive user")
+
         if user.email != email:
             raise InvalidUserCredentialsError(
                 "Token email does not match current user email"
@@ -247,7 +281,8 @@ class UserService:
         # Restrict providing superadmin data
         if user.role == UserRole.SUPERADMIN and requester.id != user.id:
             logger.warning(
-                "%s requested info about SUPERADMIN user %s while not allowed to view that user",
+                "Action is forbidden: %s %s attempted to view info about SUPERADMIN user %s",
+                requester.role.value.upper(),
                 requester,
                 UserDTO.from_orm(user),
             )
@@ -261,7 +296,7 @@ class UserService:
         ):
             logger.warning(
                 (
-                    "%s requested info about other inactive ADMIN user %s "
+                    "Action is forbidden: %s attempted to view info about other inactive ADMIN user %s "
                     "while not allowed to view that user"
                 ),
                 requester,
@@ -323,8 +358,13 @@ class UserService:
 
         # Email conflicts with already registered email
         if email and email != current_user.email:
-            await self._validate_email_conflict(current_user, email)
-            update_user_data["email"] = email
+            # Email change is forbidden until proper email-change flow is implemented
+            # ? Email change flow: Remove this error and add following additional checks:
+            # ? add: await self._validate_email_conflict(current_user, email)
+            # ? add: update_user_data["email"] = email
+            raise EmailChangeNotAllowedError(
+                "Email change is temporarily disabled until the email change flow is implemented."
+            )
 
         # 3. Resolve avatar
 
@@ -343,7 +383,7 @@ class UserService:
         if not updated_user:
             return None
 
-        logger.info(
+        logger.debug(
             "%s performed self update using admin endpoint with data %s",
             current_user,
             {
@@ -370,143 +410,148 @@ class UserService:
         - Admin: can update users, but cannot update other admins or any role field.
             Admin may update own profile except role.
         """
-        # 1. Fetch target user
+        # 1. Check payload
+
+        # 1.1 Check if empty
+
+        if not update_data:
+            # Nothing to update
+            raise BadProvidedDataError(
+                {"Provided data": "No fields provided to update."}
+            )
+
+        # Temporary guard to restrict email change until email change flow is not introduced
+        # ? Email change flow: Remove this guard when email change flow is implemented
+        if "email" in update_data:
+            raise EmailChangeNotAllowedError(
+                "Email change is temporarily disabled until the email change flow is implemented."
+            )
+
+        # 2. Fetch target user
 
         user = await self.repo.get_user_by_id(user_id)
         if not user:
             return None
 
-        # 2. Self-update case - delegate to current user update
+        # 3. Self-update logic case - restrict and refer to current user update endpoint
 
         if requester.id == user.id:
-            # Superadmin can update themselves (with limitations)
-            # Prevent Superadmin from locking themselves
-            if requester.role == UserRole.SUPERADMIN:
-                # Protect against changing role or deactivation
-                if "role" in update_data and update_data["role"] != UserRole.SUPERADMIN:
-                    raise UserRolePermissionError(
-                        "Superadmin cannot remove their own superadmin role"
-                    )
-                if "is_active" in update_data and not update_data["is_active"]:
-                    raise UserRolePermissionError(
-                        "Superadmin cannot deactivate themselves"
-                    )
-
-            # Admin cannot change role or active status for themselves
-            elif requester.role == UserRole.ADMIN:
-                if "role" in update_data and update_data["role"] != user.role:
-                    raise UserRolePermissionError("Admin cannot change own role")
-                if (
-                    "is_active" in update_data
-                    and update_data["is_active"] != user.is_active
-                ):
-                    raise UserRolePermissionError(
-                        "Admin cannot change active status themselves"
-                    )
-
-            log_data = {
-                "email": update_data.get("email"),
-                "password": "<hidden>" if update_data.get("password") else None,
-                "avatar": update_data.get("avatar"),
-                "role": update_data.get("role"),
-                "is_active": update_data.get("is_active"),
-            }
-            log_data = {
-                k: v
-                for k, v in log_data.items()
-                if v is not None and k not in {"password", "hashed_password"}
-            }
-            logger.info(
-                "%s updated self via admin endpoint with data %s", requester, log_data
-            )
-
-            return await self.update_current_user(
-                current_user=requester,
-                email=update_data.get("email"),
-                old_password=update_data.get("old_password"),
-                password=update_data.get("password"),
-                avatar=update_data.get("avatar"),
-                contacts_service=contacts_service,
-            )
-
-        # 3. Update of another user
-
-        # 3.1 Role-based restrictions
-
-        # Users cannot use update other users
-        if requester.role == UserRole.USER:
-            raise UserRolePermissionError("Users are not allowed to update users")
-
-        # Moderators cannot use update other users
-        if requester.role == UserRole.MODERATOR:
-            raise UserRolePermissionError("Moderators are not allowed to update users")
-
-        # Superadmin cannot modify other superadmin user data
-        if requester.role == UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
-            if "role" in update_data and update_data["role"] != UserRole.SUPERADMIN:
-                raise UserRolePermissionError("Cannot change another superadmin's role")
-
-        # Non-superadmin cannot modify superadmin user data
-        if requester.role != UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
             logger.warning(
-                "%s requested update of SUPERADMIN user %s while not allowed",
+                (
+                    "Action is forbidden: %s attempted to perform self-update via admin endpoint "
+                    "of the following fields %s"
+                ),
                 requester,
-                UserDTO.from_orm(user),
+                update_data.keys(),
             )
-            raise UserRolePermissionError("Cannot modify superadmin user")
+            raise UserRolePermissionError(
+                (
+                    "Self-update is not allowed via admin endpoint. "
+                    "Use /me endpoint instead."
+                )
+            )
+
+        # 4. Update of another user
+
+        # 4.1 Requester / Target user role based restrictions
+
+        # Users and moderators cannot use admin update of other users
+        if requester.role in {UserRole.USER, UserRole.MODERATOR}:
+            raise UserRolePermissionError(
+                f"{requester.role.value} are not allowed to update users"
+            )
 
         # Admin cannot modify other admins
         if requester.role == UserRole.ADMIN and user.role == UserRole.ADMIN:
             raise UserRolePermissionError("Admins cannot modify other admins")
 
-        # Admin cannot change usernames
-        if requester.role == UserRole.ADMIN and "username" in update_data:
-            raise UserRolePermissionError("Admins cannot change usernames")
-
-        # Only superadmin can change role
-        if "role" in update_data and requester.role != UserRole.SUPERADMIN:
-            raise UserRolePermissionError("Only superadmin can change user roles")
-
-        # 3.2 Check provided data and conflicts
-
-        # role
-        if "role" in update_data:
-            update_data["role"] = UserService._validate_role_exists(update_data["role"])
-
-        # email
-        if "email" in update_data and update_data["email"] != user.email:
-            await self._validate_email_conflict(
-                UserDTO.from_orm(user), update_data["email"]
+        # Non-superadmin cannot modify superadmin user data
+        if requester.role != UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
+            logger.warning(
+                (
+                    "Action is forbidden: Non-superadmin %s requested update of SUPERADMIN %s "
+                    "of the following fields: %s"
+                ),
+                requester,
+                UserDTO.from_orm(user),
+                update_data.keys(),
             )
+            raise UserRolePermissionError("Cannot modify superadmin user")
 
-        # 4. Perform actual update
+        # 4.2 Allow-list payload data filtering
 
-        allowed = {
-            "username",
-            "email",
+        allowed_fields = {
+            "username",  # only superadmin
             "avatar",
-            "hashed_password",
-            "role",
+            "role",  # only superadmin
             "is_active",
         }
-        cleaned = {k: v for k, v in update_data.items() if k in allowed}
-        updated_user = await self.repo.update_user_by_id(user.id, cleaned)
+        cleaned_data = {k: v for k, v in update_data.items() if k in allowed_fields}
+        if not cleaned_data:
+            raise BadProvidedDataError(
+                {"Provided data": "No allowed fields to update."}
+            )
+
+        # 4.3 Check resulting payload data and conflicts
+
+        # Role exists
+        if "role" in cleaned_data:
+            cleaned_data["role"] = UserService._validate_role_exists(
+                cleaned_data["role"]
+            )
+
+        # 4.4 Provided data / user role based restrictions
+
+        # Admin cannot change usernames
+        if "username" in cleaned_data and requester.role == UserRole.ADMIN:
+            raise UserRolePermissionError("Admins cannot change usernames")
+
+        # Only superadmin can change user role
+        if "role" in cleaned_data:
+            new_role = cleaned_data["role"]
+            if requester.role != UserRole.SUPERADMIN:
+                # No other user can perform user change action
+                logger.warning(
+                    "Action is forbidden: Non-superadmin %s attempted to change role of %s %s",
+                    requester,
+                    user.role.value.upper(),
+                    UserDTO.from_orm(user),
+                )
+                raise UserRolePermissionError("Only superadmin can change user roles")
+            elif user.role == UserRole.SUPERADMIN and new_role != UserRole.SUPERADMIN:
+                # Superadmin can't level-down (downgrade) other superadmin role,
+                # but still may lever-up (upgrade) it for other non-superadmin users
+                logger.warning(
+                    "Action is forbidden: SUPERADMIN %s attempted to change other SUPERADMIN %s role to %s",
+                    requester,
+                    UserDTO.from_orm(user),
+                    new_role.upper(),
+                )
+                raise UserRolePermissionError(
+                    "Superadmin cannot change another superadmin's role"
+                )
+
+        # 4.5. Perform update
+
+        updated_user = await self.repo.update_user_by_id(user.id, cleaned_data)
         if not updated_user:
             return None
 
-        logger.info(
-            "%s updated user %s with data %s",
+        logger.debug(
+            "%s updated user %s with field data %s",
             requester,
             UserDTO.from_orm(user),
             {
                 k: v
-                for k, v in update_data.items()
+                for k, v in cleaned_data.items()
                 if v is not None and k not in {"password", "hashed_password"}
             },
         )
 
-        # 5. Return updated user (DTO with contacts_count)
+        # 5. Get user contacts count
         contacts_count = await contacts_service.get_contacts_count(user.id)
+
+        # 6. Return result (DTO with contacts_count)
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
     async def delete_user_by_admin(
@@ -576,7 +621,13 @@ class UserService:
 
         # 6. Logging
 
-        logger.info("%s deleted user %s", requester, UserDTO.from_orm(user))
+        logger.info(
+            "%s %s deleted %s %s",
+            requester.role.value.upper(),
+            requester,
+            deleted_user.role.value.upper(),
+            UserDTO.from_orm(user),
+        )
 
         # 7. Return deleted user info with stats
         return UserWithStatsDTO.from_orm_with_count(
@@ -624,9 +675,16 @@ class UserService:
         }
         new_user = await self.repo.create_user(new_user_data)
 
-        creator_info = str(creator) if creator else "Anonymous user"
-        new_user_info = str(UserDTO.from_orm(new_user))
-        logger.info("New user created by %s: new user %s", creator_info, new_user_info)
+        creator_role = f"{creator.role.value.upper()} " if creator else ""
+        creator_info = creator if creator else "Anonymous user"
+        new_user_info = UserDTO.from_orm(new_user)
+        logger.info(
+            "%s%s created a new %s %s",
+            creator_role,
+            creator_info,
+            new_user_info.role.value.upper(),
+            new_user_info,
+        )
 
         return new_user
 
@@ -643,7 +701,7 @@ class UserService:
         """
         # Restrict creating superadmin users at all
         if role == UserRole.SUPERADMIN:
-            # User tried to create a Superadmin user (to gain full app permissions?).
+            # User attempted to create a Superadmin user (to gain full app permissions?).
             logger.warning(
                 "%s attempted to create SUPERADMIN (username=%s, email=%s)",
                 creator,
@@ -683,7 +741,7 @@ class UserService:
             # User tries to assign email to an existing email in the system
             # (sniffing to check if there is a user with such email?)
             logger.warning(
-                ("%s tried to change email to email of the existing user %s"),
+                ("%s attempted to change email to email of the existing user %s"),
                 current_user,
                 UserDTO.from_orm(existing_user),
             )

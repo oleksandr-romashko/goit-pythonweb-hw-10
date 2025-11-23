@@ -1,6 +1,7 @@
 """Custom exception classes for service-level logic."""
 
 from src.utils.constants import (
+    MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN,
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
@@ -25,6 +26,13 @@ class InvalidUserCredentialsError(Exception):
         super().__init__(f"Invalid user credentials: {message}")
 
 
+class UserInactiveError(Exception):
+    """Raised when user is inactive."""
+
+    def __init__(self, message: str):
+        super().__init__(message or "Inactive user")
+
+
 class UserConflictError(Exception):
     """
     Raised when user data conflicts with existing records
@@ -44,6 +52,13 @@ class InvalidTokenError(Exception):
 
     def __init__(self, message: str):
         super().__init__(f"Invalid access token: {message}")
+
+
+class EmailChangeNotAllowedError(Exception):
+    """Raised when email change is not allowed."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN):
+        super().__init__(message)
 
 
 class UserRoleIsInvalidError(Exception):

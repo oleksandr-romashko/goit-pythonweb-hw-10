@@ -6,7 +6,7 @@ Provides operations for users.
 
 from typing import Optional, Union
 
-from fastapi import APIRouter, Request, Depends, status
+from fastapi import APIRouter, Depends, status
 
 from src.db.models import User
 from src.db.models.enums import UserRole
@@ -15,8 +15,10 @@ from src.services.dtos import UserDTO, UserWithStatsDTO
 from src.services.errors import (
     InvalidUserCredentialsError,
     BadProvidedDataError,
+    EmailChangeNotAllowedError,
     UserConflictError,
 )
+from src.utils.constants import MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN
 from src.utils.logger import logger
 
 from src.api.dependencies import (
@@ -30,7 +32,6 @@ from src.api.errors import (
     raise_http_403_error,
     raise_http_409_error,
 )
-from src.api.extensions import request_rate_limiter
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES,
@@ -66,9 +67,7 @@ router = APIRouter(
     response_model_exclude_none=True,
     responses={**ON_ME_SUCCESS_RESPONSE},
 )
-@request_rate_limiter.limit("10/minute")
 async def get_me(
-    request: Request,
     user: User = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
@@ -121,6 +120,9 @@ async def update_me(
     except BadProvidedDataError as exc:
         logger.info(exc)
         raise_http_400_error(detail=exc.errors)
+    except EmailChangeNotAllowedError as exc:
+        logger.info("%s tried to change its email: %s", UserDTO.from_orm(user), exc)
+        raise_http_403_error(MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN)
     except UserConflictError as exc:
         logger.info(exc)
         raise_http_409_error(detail=exc.errors)

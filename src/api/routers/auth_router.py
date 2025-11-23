@@ -25,6 +25,7 @@ from src.db.models.enums import UserRole
 from src.services import AuthService, UserService, ContactService, MailService
 from src.services.dtos import UserDTO
 from src.services.errors import (
+    UserInactiveError,
     UserConflictError,
     InvalidUserCredentialsError,
     UserEmailIsAlreadyConfirmedError,
@@ -51,6 +52,7 @@ from src.api.dependencies import (
 from src.api.errors import (
     raise_http_400_error,
     raise_http_401_error,
+    raise_http_403_error,
     raise_http_409_error,
 )
 from src.api.responses.success_responses import (
@@ -313,6 +315,14 @@ async def verify_email(
             str(exc),
         )
         raise_http_400_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN)
+    except UserInactiveError as exc:
+        logger.debug(
+            "%s for user_id=%s and email=%s",
+            str(exc),
+            user_id,
+            email,
+        )
+        raise_http_403_error("Verification of email for inactive user is not allowed")
     except UserEmailIsAlreadyConfirmedError as exc:
         logger.debug(
             "Can't verify previously verified email for user_id=%s and email=%s: %s",

@@ -46,6 +46,7 @@ MESSAGE_ERROR_USERNAME_IS_RESERVED = "This username is reserved and cannot be us
 
 MESSAGE_ERROR_CONTACT_NOT_FOUND = "Contact not found"
 
+MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN = "Email change is forbidden."
 MESSAGE_ERROR_USER_ROLE_IS_INVALID = "Invalid or not supported user role"
 MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS = "Not authorized to perform this action"
 MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED = "Email verification is required"
