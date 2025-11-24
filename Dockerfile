@@ -24,11 +24,12 @@ COPY pyproject.toml poetry.lock ./
 RUN poetry install --no-root --no-interaction --no-ansi
 
 # Now copy full project (except what is in .dockerignore)
+COPY ./entrypoint.sh ./entrypoint.sh
 COPY ./src ./src
 COPY ./migrations ./migrations
 COPY ./alembic.ini ./alembic.ini
+COPY ./static ./static
 COPY ./LICENSE ./LICENSE
-COPY ./entrypoint.sh ./entrypoint.sh
 
 # Space optimization: Clean up __pycache__
 # Cleans up any bytecode just in case something generates it during copy or install

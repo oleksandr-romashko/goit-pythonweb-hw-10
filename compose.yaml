@@ -35,13 +35,19 @@ services:
       - backend-network
   
   api-cache:
-    container_name: cache-redis
+    container_name: ${CACHE_HOST}
     image: redis:alpine
-    ports:
-      - "6379:6379"
+    # ports:
+    #   - "${CACHE_PORT:-6379}:6379"  # Do not expose for better security.
     restart: always
-    environment:
-      ALLOW_EMPTY_PASSWORD: yes
+    command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    security_opt:
+      - no-new-privileges:true
     networks:
       - backend-network
 
@@ -49,8 +55,8 @@ services:
   db:
     container_name: ${DB_HOST}
     image: postgres:17.5-alpine3.22
-    ports:
-      - "${DB_PORT:-5432}:5432"  # Let commented for better security and accessing db via pgAdmin tool only.
+    # ports:
+    #   - "${DB_PORT:-5432}:5432"  # Do not expose for better security and accessing db via pgAdmin tool only.
     restart: always
     env_file:
       - .env

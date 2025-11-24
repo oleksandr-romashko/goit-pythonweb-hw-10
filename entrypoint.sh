@@ -18,4 +18,13 @@ fi
 echo "✅ Superuser setup complete."
 
 echo "3) ⚙️  Starting FastAPI..."
+
+# DEV MODE <-- If arguments detected, run the command
+if [ "$#" -gt 0 ]; then
+    echo "🔧 DEV mode detected, executing custom command: $@"
+    exec "$@"
+fi
+
+# PROD MODE
+echo "🚀  Starting FastAPI (PROD mode)..."
 exec poetry run python -m src.main
