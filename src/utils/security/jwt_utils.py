@@ -157,6 +157,7 @@ def decode_token(
                 "verify_aud": audience is not None,
                 "verify_nbf": verify_nbf,
                 "verify_exp": verify_exp,
+                "verify_signature": True,
             },
         )
         if token_type:
