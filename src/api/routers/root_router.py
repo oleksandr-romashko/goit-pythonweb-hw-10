@@ -1,11 +1,13 @@
 """
 Root API endpoint.
 
-Redirects to api documentation.
+Redirects to api documentation and serves static resources.
 """
 
 from fastapi import APIRouter
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+
+from src.config import app_config
 
 router = APIRouter()
 
@@ -18,3 +20,9 @@ async def get_root() -> RedirectResponse:
     Redirects to swagger documentation.
     """
     return RedirectResponse(url="/docs")
+
+
+@router.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Serve the favicon.ico file."""
+    return FileResponse(f"{app_config.STATIC_DIR}/images/favicon.ico")
