@@ -13,10 +13,11 @@ from fastapi.staticfiles import StaticFiles
 
 from src.api.errors.handlers import init_exception_handlers
 from src.api.extensions import (
-    init_cors,
     add_processing_time_header,
-    init_rate_limiter,
     close_rate_limiter,
+    init_cors,
+    init_rate_limiter,
+    init_user_context,
 )
 from src.api.extensions.rate_limiter import get_rate_limit, RateLimit
 from src.api.routers import (
@@ -70,6 +71,9 @@ app = FastAPI(
 
 # CORS middleware
 init_cors(app)
+
+# User context middleware
+init_user_context(app)
 
 # Processing time header middleware
 if app_config.DEBUG:

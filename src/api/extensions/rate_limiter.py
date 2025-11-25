@@ -21,15 +21,12 @@ from fastapi import Request, Response, status
 from fastapi.exceptions import HTTPException
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
-from jose import JWTError  # type: ignore[import]
 
 from src.cache import get_redis
-from src.config import app_config
 from src.utils.constants import MESSAGE_ERROR_TOO_MANY_REQUESTS
 from src.utils.logger import logger
-from src.utils.security import jwt_utils
 
-# TODO: Introduce all limits to the app
+# TODO: Apply all limits below to appropriate app routes
 # ==========================
 # Named rate limits for application-wide reuse
 # ==========================
@@ -55,7 +52,7 @@ def get_rate_limit(rate_limit: RateLimit) -> RateLimiter:
         # === 🌐 Global limit ===
         case RateLimit.GLOBAL:
             # app-wide
-            return RateLimiter(times=1000, hours=1)
+            return RateLimiter(times=2, hours=1)
         # === 🔐 Auth & Security endpoints ===
         case RateLimit.AUTH:
             # for login/register/token
@@ -97,38 +94,21 @@ async def default_identifier(request: Request):
     if forwarded:
         return forwarded.split(",")[0]
 
-    # Extract IP (fallback)
-    base_id = request.client.host if request.client else "unknown"
     method = request.method
     path = request.url.path
 
-    # Try to extract JWT from header
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.split(" ", 1)[1]
+    # Extract user_id from request state
+    if getattr(request.state, "user_id", None):
+        user_id = request.state.user_id
+        return f"user:{user_id}:{method}:{path}"
 
-        try:
-            # Decode without verifying expiration, signature etc.
-            payload = jwt_utils.decode_token(
-                token,
-                app_config.AUTH_JWT_SECRET,
-                algorithms=[app_config.AUTH_JWT_ALGORITHM],
-                verify_exp=False,  # <-- important
-            )
-
-            user_id = payload.get("sub")
-            if user_id:
-                return f"user:{user_id}:{path}"
-
-        except JWTError:
-            pass  # Fall back to IP
-
-    # Unauthenticated user --> fallback by IP
+    # Fallback unauthenticated user by extracting IP
+    base_id = request.client.host if request.client else "unknown"
     return f"ip:{base_id}:{method}:{path}"
 
 
 async def exceed_limit_callback(
-    request: Request, response: Response, pexpire: int
+    request: Request, _response: Response, pexpire: int
 ) -> NoReturn:
     """
     Called when the request exceeds the rate limit.
@@ -139,11 +119,15 @@ async def exceed_limit_callback(
     """
     retry_after_seconds = ceil(pexpire / 1000)
 
+    user_id = getattr(request.state, "user_id", None)
+    ip = request.client.host if request.client else "unknown"
+
     logger.warning(
-        "Rate limit exceeded: %s %s from IP=%s | Limit=%s",
+        "Rate limit exceeded: %s %s | user_id=%s | ip=%s | retry_after=%s",
         request.method,
         request.url.path,
-        request.client.host if request.client else "unknown",
+        user_id,
+        ip,
         retry_after_seconds,
     )
     raise HTTPException(
