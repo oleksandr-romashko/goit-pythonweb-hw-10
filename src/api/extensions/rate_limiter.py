@@ -52,7 +52,7 @@ def get_rate_limit(rate_limit: RateLimit) -> RateLimiter:
         # === 🌐 Global limit ===
         case RateLimit.GLOBAL:
             # app-wide
-            return RateLimiter(times=2, hours=1)
+            return RateLimiter(times=1000, hours=1)
         # === 🔐 Auth & Security endpoints ===
         case RateLimit.AUTH:
             # for login/register/token
@@ -121,13 +121,15 @@ async def exceed_limit_callback(
 
     user_id = getattr(request.state, "user_id", None)
     ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent")
 
     logger.warning(
-        "Rate limit exceeded: %s %s | user_id=%s | ip=%s | retry_after=%s",
+        "Rate limit exceeded: %s %s | user_id=%s | ip=%s | user_agent=%s | retry_after=%s",
         request.method,
         request.url.path,
         user_id,
         ip,
+        user_agent,
         retry_after_seconds,
     )
     raise HTTPException(
