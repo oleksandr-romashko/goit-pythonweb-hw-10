@@ -131,6 +131,7 @@ def decode_token(
         secret_key (str): Secret key used for decoding.
         algorithms (list[str]): Allowed signing algorithm(s).
         audience (str | None): Expected audience value to validate ('aud' claim).
+        token_type (str | None): Expected token type check. Skipped if None.
         verify_nbf (bool): Whether to verify token activation time (`nbf` (not before) claim).
         verify_exp (bool): Whether to verify token expiration (`exp` (expiration) claim).
 
