@@ -5,6 +5,8 @@ Loads environment variables from a `.env` file and provides a singleton
 Config instance with database connection settings.
 """
 
+from typing import Dict
+
 import os
 from pathlib import Path
 import sys
@@ -16,10 +18,11 @@ from pydantic import SecretStr
 
 from src.utils.logger import logger
 from src.utils.constants import (
+    DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_CACHE_PASSWORD,
     DEFAULT_DB_ADMIN_USER_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL,
     DEFAULT_DB_APP_USER_PASSWORD,
-    DEFAULT_AUTH_JWT_SECRET,
     DEFAULT_MAIL_JWT_SECRET,
     DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
@@ -36,6 +39,14 @@ load_dotenv(BASE_DIR / ".env")  # Load variables from .env
 class Config:
     """Holds configuration values for the application, such as database URLs."""
 
+    # API web server settings
+    WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
+    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    STATIC_DIR = "static"
+    EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
+        "EMAIL_VERIFICATION_REDIRECT_URL", default=""
+    ).strip()
+
     # CORS settings
     # List of sources that are allowed to have access to the the app
     _cors_origins: str = os.getenv("CORS_ORIGINS", default="")
@@ -43,12 +54,11 @@ class Config:
         [origin.strip() for origin in _cors_origins.split(",")] if _cors_origins else []
     )
 
-    # API web server settings
-    WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
-    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-    EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
-        "EMAIL_VERIFICATION_REDIRECT_URL", default=""
-    ).strip()
+    # Cache settings
+    CACHE_HOST: str = os.getenv("CACHE_HOST", default="cache-redis")
+    CACHE_PORT = int(os.getenv("CACHE_PORT", default="6379"))
+    CACHE_PASSWORD = os.getenv("CACHE_PASSWORD", default="")
+    CACHE_URL = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}/0"
 
     # Database settings
     DB_HOST: str = os.getenv("DB_HOST", default="api-db")
@@ -121,6 +131,7 @@ class Config:
         pyproject_data = tomllib.load(f)
 
     # App metadata
+
     APP_TITLE = "Contacts Manager API"
     APP_DESCRIPTION = (
         "### REST API for storing and managing personal contacts\n"
@@ -152,12 +163,17 @@ class Config:
         "<br><br>"
         "\n---\n"
     )
-
-    # Version / author / license
+    # Version / author / contacts
     APP_VERSION = pyproject_data["project"].get("version", "0.0.0")
     APP_AUTHOR_NAME = pyproject_data["project"].get("authors", ["Unknown"])[0]["name"]
     APP_AUTHOR_EMAIL = pyproject_data["project"].get("authors", ["Unknown"])[0]["email"]
     APP_HOMEPAGE = pyproject_data["project"]["urls"].get("Homepage", "")
+    APP_CONTACT = {
+        "name": APP_AUTHOR_NAME,
+        "url": APP_HOMEPAGE,
+        "email": APP_AUTHOR_EMAIL,
+    }
+    # License
     APP_LICENSE_TITLE = (
         pyproject_data["project"]
         .get("license", "Unknown License")
@@ -166,6 +182,10 @@ class Config:
     APP_LICENSE_URL = (
         "https://github.com/oleksandr-romashko/goit-pythonweb-hw-10/blob/main/LICENSE"
     )
+    APP_LICENSE_INFO: Dict = {
+        "name": f"{APP_LICENSE_TITLE} License",
+        "url": APP_LICENSE_URL,
+    }
 
 
 # === Exit on critical vars ===
@@ -173,19 +193,21 @@ class Config:
 # Require required values and prevent from values being default values
 
 required_vars = [
+    "AUTH_JWT_SECRET",
+    "CACHE_PASSWORD",
     "DB_ADMIN_USER",
     "DB_ADMIN_USER_PASSWORD",
     "DB_APP_USER_PASSWORD",
     "DB_ADMIN_PANEL_PASSWORD",
-    "AUTH_JWT_SECRET",
     "MAIL_JWT_SECRET",
     "MAIL_USERNAME",
     "MAIL_PASSWORD",
 ]
 default_values = [
+    DEFAULT_AUTH_JWT_SECRET,
+    DEFAULT_CACHE_PASSWORD,
     DEFAULT_DB_ADMIN_USER_PASSWORD,
     DEFAULT_DB_APP_USER_PASSWORD,
-    DEFAULT_AUTH_JWT_SECRET,
     DEFAULT_MAIL_JWT_SECRET,
     DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,

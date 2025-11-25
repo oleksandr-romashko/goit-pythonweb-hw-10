@@ -34,9 +34,7 @@ MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for updat
 MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN = "Bad request: Missing token parameter"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
-MESSAGE_ERROR_TOO_MANY_REQUESTS = (
-    "Too many requests! Request limit exceeded. Try again later."
-)
+MESSAGE_ERROR_TOO_MANY_REQUESTS = "Too Many Requests"
 MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
 MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED = "Not implemented yet"
 
@@ -60,12 +58,13 @@ MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED = (
 
 # Default ENV variables values
 
+DEFAULT_AUTH_JWT_SECRET = "your_auth_jwt_secret_here"
+DEFAULT_CACHE_PASSWORD = "your_cache_password_here"
 DEFAULT_DB_ADMIN_USER_PASSWORD = "your_db_admin_user_password_here"
 DEFAULT_DB_APP_USER_PASSWORD = "your_db_app_user_password_here"
 DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL = "pgadmin@local.dev"
 DEFAULT_DB_ADMIN_PANEL_PASSWORD = "your_pgadmin_user_secret_password_here"
 DEFAULT_SUPERADMIN_EMAIL = "superadmin@example.com"
 DEFAULT_SUPERADMIN_PASSWORD = "superadmin_secret_password"
-DEFAULT_AUTH_JWT_SECRET = "your_auth_jwt_secret_here"
 DEFAULT_MAIL_JWT_SECRET = "your_mail_jwt_secret_here"
 DEFAULT_MAIL_PASSWORD = "mail_secret_password"

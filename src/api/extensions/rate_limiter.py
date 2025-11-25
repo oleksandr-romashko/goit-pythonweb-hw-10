@@ -1,0 +1,173 @@
+"""
+Application-wide request rate limiter.
+
+Provides global and per-endpoint rate limiting.
+
+Usage:
+    ```
+    @router.get(
+        "/",
+        ...
+        dependencies=[Depends(RateLimiter(times=2, seconds=5))],
+    )
+    ```
+"""
+
+from math import ceil
+from enum import Enum, auto
+from typing import NoReturn
+
+from fastapi import Request, Response, status
+from fastapi.exceptions import HTTPException
+from fastapi_limiter import FastAPILimiter
+from fastapi_limiter.depends import RateLimiter
+from jose import JWTError  # type: ignore[import]
+
+from src.cache import get_redis
+from src.config import app_config
+from src.utils.constants import MESSAGE_ERROR_TOO_MANY_REQUESTS
+from src.utils.logger import logger
+from src.utils.security import jwt_utils
+
+# TODO: Introduce all limits to the app
+# ==========================
+# Named rate limits for application-wide reuse
+# ==========================
+
+
+class RateLimit(Enum):
+    """Defines available rate limit type."""
+
+    GLOBAL = auto()
+    AUTH = auto()
+    AUTH_STRICT = auto()
+    PASSWORD_RESET = auto()
+    USER_CRUD = auto()
+    ME = auto()
+    CONTACTS_READ = auto()
+    CONTACTS_WRITE = auto()
+    UTILS = auto()
+
+
+def get_rate_limit(rate_limit: RateLimit) -> RateLimiter:
+    """Returns appropriate rate limiter based on limit type"""
+    match rate_limit:
+        # === 🌐 Global limit ===
+        case RateLimit.GLOBAL:
+            # app-wide
+            return RateLimiter(times=1000, hours=1)
+        # === 🔐 Auth & Security endpoints ===
+        case RateLimit.AUTH:
+            # for login/register/token
+            return RateLimiter(times=5, minutes=1)
+        case RateLimit.AUTH_STRICT:
+            # for login/register/token
+            # composite against sudden bursts and continuous flood.
+            return RateLimiter(times=100, hours=1)
+        case RateLimit.PASSWORD_RESET:
+            return RateLimiter(times=100, hours=1)
+        # === 👤 Users and user profile endpoints ===
+        case RateLimit.USER_CRUD:
+            # POST/PUT/DELETE on /users
+            return RateLimiter(times=20, minutes=1)
+        case RateLimit.ME:
+            # /me
+            return RateLimiter(times=10, minutes=1)
+        # === 📇 Contacts-related endpoints ===
+        case RateLimit.CONTACTS_READ:
+            return RateLimiter(times=120, minutes=1)
+        case RateLimit.CONTACTS_WRITE:
+            return RateLimiter(times=30, minutes=1)
+        # === ⚙️ Utility / public endpoints ===
+        case RateLimit.UTILS:
+            return RateLimiter(times=5000, hours=1)
+        # === Other ===
+        case _:
+            raise ValueError("Unsupported rate limit type")
+
+
+# ==========================
+# Global limiter instance
+# ==========================
+
+
+async def default_identifier(request: Request):
+    """Identifier of route limit, overriding default identifier of ip."""
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0]
+
+    # Extract IP (fallback)
+    base_id = request.client.host if request.client else "unknown"
+    method = request.method
+    path = request.url.path
+
+    # Try to extract JWT from header
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ", 1)[1]
+
+        try:
+            # Decode without verifying expiration, signature etc.
+            payload = jwt_utils.decode_token(
+                token,
+                app_config.AUTH_JWT_SECRET,
+                algorithms=[app_config.AUTH_JWT_ALGORITHM],
+                verify_exp=False,  # <-- important
+            )
+
+            user_id = payload.get("sub")
+            if user_id:
+                return f"user:{user_id}:{path}"
+
+        except JWTError:
+            pass  # Fall back to IP
+
+    # Unauthenticated user --> fallback by IP
+    return f"ip:{base_id}:{method}:{path}"
+
+
+async def exceed_limit_callback(
+    request: Request, response: Response, pexpire: int
+) -> NoReturn:
+    """
+    Called when the request exceeds the rate limit.
+
+    :param request: FastAPI request
+    :param response: FastAPI response (ignored)
+    :param pexpire: Remaining milliseconds until the limit resets
+    """
+    retry_after_seconds = ceil(pexpire / 1000)
+
+    logger.warning(
+        "Rate limit exceeded: %s %s from IP=%s | Limit=%s",
+        request.method,
+        request.url.path,
+        request.client.host if request.client else "unknown",
+        retry_after_seconds,
+    )
+    raise HTTPException(
+        status.HTTP_429_TOO_MANY_REQUESTS,
+        MESSAGE_ERROR_TOO_MANY_REQUESTS,
+        headers={"Retry-After": str(retry_after_seconds)},
+    )
+
+
+async def init_rate_limiter() -> None:
+    """Initialize rate limiter"""
+    logger.info("Initializing request rate limiter...")
+    redis = get_redis()
+    await FastAPILimiter.init(
+        redis,
+        identifier=default_identifier,
+        http_callback=exceed_limit_callback,
+        prefix="ratelimit",
+    )
+    logger.info("Request rate limiter initialization success.")
+
+
+async def close_rate_limiter() -> None:
+    """Close rate rate limiter and free resources"""
+    logger.info("Closings request rate limiter...")
+    await FastAPILimiter.close()
+    logger.info("Request rate limiter closed.")

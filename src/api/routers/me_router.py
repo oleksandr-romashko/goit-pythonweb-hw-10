@@ -32,6 +32,7 @@ from src.api.errors import (
     raise_http_403_error,
     raise_http_409_error,
 )
+from src.api.extensions.rate_limiter import get_rate_limit, RateLimit
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES,
@@ -53,6 +54,7 @@ router = APIRouter(
     prefix="/users/me",
     tags=["Current User / About Me self-service (User Access)"],
     responses={**ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES},
+    dependencies=[Depends(get_rate_limit(RateLimit.ME))],
 )
 
 
