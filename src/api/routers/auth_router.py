@@ -36,7 +36,7 @@ from src.utils.constants import (
     MESSAGE_SUCCESS_EMAIL_VERIFIED,
     MESSAGE_ERROR_USERNAME_IS_RESERVED,
     MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS,
-    MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN,
+    MESSAGE_ERROR_INVALID_OR_EXPIRED_REFRESH_TOKEN,
     MESSAGE_ERROR_EMAIL_VERIFICATION_REQUIRED,
     MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
     MESSAGE_ERROR_INVALID_OR_EXPIRED_MAIL_TOKEN,
@@ -233,7 +233,7 @@ async def issue_access_token_on_refresh_token(
             body.refresh_token.get_secret_value(),
         )
     except InvalidTokenError:
-        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_REFRESH_TOKEN)
 
     user_id = int(refresh_token_data["sub"])
     token_id = refresh_token_data["jti"]
@@ -245,7 +245,7 @@ async def issue_access_token_on_refresh_token(
             token_id,
             user_id,
         )
-        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_REFRESH_TOKEN)
 
     is_active_user = user.is_active
     if not is_active_user:
@@ -254,7 +254,7 @@ async def issue_access_token_on_refresh_token(
             token_id,
             user_id,
         )
-        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_REFRESH_TOKEN)
 
     access_token = auth_service.create_access_token(user_id)
 

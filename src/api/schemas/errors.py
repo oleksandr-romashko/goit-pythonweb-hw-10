@@ -80,7 +80,7 @@ class InvalidAuthErrorResponse(ErrorResponse):
     )
 
 
-class ImproperTokenErrorResponse(ErrorResponse):
+class ImproperAuthTokenErrorResponse(ErrorResponse):
     """Error for 401 Unauthorized when a JWT token can't be processed."""
 
     detail: str = Field(

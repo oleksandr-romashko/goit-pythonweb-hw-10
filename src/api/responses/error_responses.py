@@ -13,7 +13,7 @@ from src.utils.constants import (
 )
 
 from src.api.schemas.errors import (
-    ImproperTokenErrorResponse,
+    ImproperAuthTokenErrorResponse,
     InvalidTokenCredentialsErrorResponse,
     InvalidLoginCredentialsErrorResponse,
     EmailNotVerifiedErrorResponse,
@@ -121,14 +121,14 @@ ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES: Dict = {
     401: {
         "description": "Unauthorized - Invalid JWT token",
         "model": Union[
-            ImproperTokenErrorResponse, InvalidTokenCredentialsErrorResponse
+            ImproperAuthTokenErrorResponse, InvalidTokenCredentialsErrorResponse
         ],
         "content": {
             "application/json": {
                 "examples": {
                     "Improper token": {
                         "summary": "Example for invalid JWT token",
-                        "value": ImproperTokenErrorResponse.generate_example_recursive(),
+                        "value": ImproperAuthTokenErrorResponse.generate_example_recursive(),
                     },
                     "Invalid credentials": {
                         "summary": "Example for invalid JWT credentials",

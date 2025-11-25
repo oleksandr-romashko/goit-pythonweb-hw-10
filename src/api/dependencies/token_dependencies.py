@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 
 from src.services import AuthService
 from src.services.errors import InvalidTokenError
-from src.utils.constants import MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN
+from src.utils.constants import MESSAGE_ERROR_INVALID_OR_EXPIRED_ACCESS_TOKEN
 from src.utils.logger import logger
 
 from src.api.errors import raise_http_401_error
@@ -37,7 +37,7 @@ async def get_current_user_id(
         payload = token_service.decode_access_token(token)
     except InvalidTokenError as exc:
         logger.warning(str(exc))
-        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_AUTH_TOKEN)
+        raise_http_401_error(MESSAGE_ERROR_INVALID_OR_EXPIRED_ACCESS_TOKEN)
 
     # Retrieve user identifier from the token subject claim
     user_id: int = int(payload["sub"])
