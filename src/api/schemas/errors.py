@@ -59,14 +59,16 @@ class EmailIsVerifiedErrorResponse(ErrorResponse):
     )
 
 
-class BadMeValuesRequestErrorResponse(ErrorResponse):
-    """Error for 400 Bad Request when provided update values for me are incorrect or improper."""
+class BadMePasswordUpdateValuesRequestErrorResponse(ErrorResponse):
+    """
+    Error for 400 Bad Request when provided update values for password update are incorrect or improper.
+    """
 
     detail: str = Field(
         json_schema_extra={
             "example": {
-                "password": "New password can't be the same as the old one",
-                "email": "New email can't be the same as the current one",
+                "old_password": "Old password is required to change password",
+                "new_password": "New password can't be empty",
             },
         },
     )
