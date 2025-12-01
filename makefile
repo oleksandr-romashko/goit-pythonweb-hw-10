@@ -7,7 +7,7 @@ BASE_COMPOSE=-f compose.yaml
 DEV_COMPOSE=$(BASE_COMPOSE) -f compose.dev.override.yml
 PROFILE=--profile tools
 
-.PHONY: dev prod clean logs stop restart rebuild shell migrate
+.PHONY: dev prod clean logs stop rebuild restart shell migrate
 
 ## Run development environment
 dev:
