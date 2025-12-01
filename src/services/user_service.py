@@ -25,7 +25,7 @@ from .errors import (
     UserRolePermissionError,
     UserEmailIsAlreadyConfirmedError,
 )
-from .markers import NOT_PROVIDED
+from .markers import AppInitActor, APP_INIT_ACTOR, NOT_PROVIDED
 
 
 # TODO: Add email change flow
@@ -139,7 +139,7 @@ class UserService:
             raise UserConflictError({"init": "Superuser already exists"})
 
         await self._create_user_common(
-            creator=None,
+            creator=APP_INIT_ACTOR,
             username=username,
             email=email,
             password=password,
@@ -709,7 +709,7 @@ class UserService:
 
     async def _create_user_common(
         self,
-        creator: Optional[UserDTO],
+        creator: Optional[Union[UserDTO, AppInitActor]],
         username: str,
         email: str,
         password: str,
@@ -745,7 +745,11 @@ class UserService:
         }
         new_user = await self.repo.create_user(new_user_data)
 
-        creator_role = f"{creator.role.value.upper()} " if creator else ""
+        creator_role = (
+            f"{creator.role.value.upper()} "
+            if creator and isinstance(creator, UserDTO)
+            else ""
+        )
         creator_info = creator if creator else "Anonymous user"
         new_user_info = UserDTO.from_orm(new_user)
         logger.info(
