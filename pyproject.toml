@@ -23,6 +23,7 @@ dependencies = [
     "python-multipart (>=0.0.20,<0.0.21)",
     "fastapi-mail (>=1.5.8,<2.0.0)",
     "fastapi-limiter (>=0.1.6,<0.2.0)",
+    "cloudinary (>=1.44.1,<2.0.0)",
 ]
 
 [tool.poetry]
