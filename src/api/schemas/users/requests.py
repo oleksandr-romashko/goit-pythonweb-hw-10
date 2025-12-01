@@ -24,7 +24,6 @@ from .enums import UserFilterRole
 from .fields import (
     UsernameField,
     PasswordField,
-    AvatarField,
     RoleField,
     IsActiveField,
     InactiveLastSortField,
@@ -45,13 +44,19 @@ class UserRegisterRequestSchema(BaseModel):
 class UserAdminCreateRequestSchema(UserRegisterRequestSchema):
     """Schema for manual user creation by admin or superadmin."""
 
+    # Inherit fields
+
     role: str = RoleField(
         optional=True,
         default=UserRole.USER.value,
         description="User role (e.g., user, admin). Only SuperAdmin can create Admins.",
     )
-    avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True, default=True)
+
+    class Config:
+        """Additional model config to forbid adding extra fields"""
+
+        extra = "forbid"
 
 
 class UserLoginRequestSchema(BaseModel):
@@ -65,20 +70,16 @@ class UserLoginRequestSchema(BaseModel):
     password: str = PasswordField()
 
 
-@at_least_one_field_required_validator
 @user_password_strength_validator
-class UserUpdateRequestSchema(BaseModel):
-    """Schema for updating existing user by regular user."""
+class UserUpdatePasswordRequestSchema(BaseModel):
+    """Schema for updating user password."""
 
-    # Email change is forbidden unless email change flow is implemented
-    # email: Optional[EmailStr] = EmailField(optional=True)
-    old_password: Optional[str] = PasswordField(
-        optional=True, description="Old password to validate", example="OldStrongPass1!"
+    current_password: str = PasswordField(
+        description="Current password to validate", example="StrongPass1!"
     )
-    password: Optional[str] = PasswordField(
-        optional=True, description="New password to set", example="NewStrongPass1!"
+    password: str = PasswordField(
+        description="New password to set", example="NewStrongPass1!"
     )
-    avatar: Optional[str] = AvatarField(optional=True)
 
     class Config:
         """Additional model config to forbid adding extra fields"""
@@ -92,9 +93,6 @@ class UserUpdateAdminRequestSchema(BaseModel):
     """Schema for updating existing user by admin user."""
 
     username: Optional[str] = UsernameField(optional=True)
-    # Email change is forbidden unless email change flow is implemented
-    # email: Optional[EmailStr] = EmailField(optional=True)
-    avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
     role: Optional[str] = RoleField(optional=True)
 

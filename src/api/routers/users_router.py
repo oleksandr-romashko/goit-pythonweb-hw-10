@@ -99,7 +99,6 @@ async def create_user_by_admin(
             email=body.email,
             password=body.password,
             role_str=body.role,
-            avatar=body.avatar,
             is_active=body.is_active or True,
         )
     except UserRoleIsInvalidError:
@@ -251,8 +250,8 @@ async def update_user(
     try:
         updated_dto = await user_service.update_user_by_admin(
             requester=requester_dto,
-            user_id=user_id,
-            update_data=update_payload,
+            target_user_id=user_id,
+            changes=update_payload,
             contacts_service=contacts_service,
         )
     except EmailChangeNotAllowedError as exc:
@@ -310,7 +309,7 @@ async def delete_user(
     try:
         deleted_dto = await user_service.delete_user_by_admin(
             requester=requester_dto,
-            user_id=user_id,
+            target_user_id=user_id,
             contacts_service=contacts_service,
         )
     except UserRolePermissionError as exc:
