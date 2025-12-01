@@ -1,31 +1,31 @@
 """Service layer providing business logic for managing User entities."""
 
-from typing import Optional, Union, Any, Dict, List, Tuple
+from typing import Optional, Union, Any, Mapping, Dict, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from libgravatar import Gravatar  # type: ignore[import]
 
 from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
-from src.services.dtos import UserDTO
-from src.services.errors import UserInactiveError, UserConflictError
+from src.providers.avatar_provider import GravatarProvider
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 from src.utils.security.password_utils import get_password_hash, verify_password
 
 from .contact_service import ContactService
-from .dtos import UserWithStatsDTO
+from .dtos import UserDTO, UserWithStatsDTO
 from .errors import (
     BadProvidedDataError,
     InvalidUserCredentialsError,
-    UserConflictError,
     EmailChangeNotAllowedError,
+    UserConflictError,
+    UserInactiveError,
     UserRoleIsInvalidError,
     UserRolePermissionError,
     UserEmailIsAlreadyConfirmedError,
 )
+from .markers import NOT_PROVIDED
 
 
 # TODO: Add email change flow
@@ -56,15 +56,69 @@ from .errors import (
 class UserService:
     """Handles business logic related to users."""
 
-    def __init__(self, db_session: AsyncSession):
-        """Initialize the service with a users repository."""
+    def __init__(
+        self,
+        db_session: AsyncSession,
+        avatar_provider: Optional[GravatarProvider] = None,
+    ):
+        """Initialize the service with a users repository and other dependencies."""
         self.repo = UsersRepository(db_session)
+        self.avatar_provider = avatar_provider or GravatarProvider()
+
+    @staticmethod
+    def _validate_password_change(
+        old_password: Optional[str], new_password: str, hashed_old: str
+    ) -> None:
+        """
+        Validate old password before updating to new password.
+
+        Raises BadProvidedDataError if old password is missing or same as new.
+        Raises InvalidUserCredentialsError if old password doesn't match.
+        """
+        if not old_password:
+            raise BadProvidedDataError(
+                {"old_password": "Old password is required to change password"}
+            )
+        if not new_password:
+            raise BadProvidedDataError({"new_password": "New password can't be empty"})
+        if new_password == old_password:
+            # Additional check of invalid scenario - should be handled by frontend
+            raise BadProvidedDataError(
+                {"new_password": "New password can't be the same as the old one"}
+            )
+        if not verify_password(old_password, hashed_old):
+            # Check for user authorization to change password
+            logger.warning(
+                "User failed to pass old password validation (possible stolen token)"
+            )
+            raise InvalidUserCredentialsError("Incorrect old password")
+
+    @staticmethod
+    def _validate_role_exists(role: Optional[Union[str, UserRole]]) -> UserRole:
+        """
+        Ensure provided role exists in UserRole enum.
+
+        Returns: UserRole instance
+
+        Raises:
+         - UserRoleIsInvalidError if role is invalid, empty or None
+        """
+        if not role:
+            raise UserRoleIsInvalidError("Role cannot be empty or None")
+
+        if isinstance(role, UserRole):
+            return role
+
+        try:
+            return UserRole(role)
+        except ValueError as exc:
+            raise UserRoleIsInvalidError(f"Invalid role: '{role}'") from exc
 
     async def create_superuser(self, username: str, email: str, password: str) -> None:
         """Create a superuser if it doesn't exist. Returns True if created."""
         if not email:
-            raise InvalidUserCredentialsError(
-                "Email for superadmin is empty or missing."
+            raise BadProvidedDataError(
+                {"email": "Email for superadmin is empty or missing."}
             )
         elif email == DEFAULT_SUPERADMIN_EMAIL:
             raise InvalidUserCredentialsError(
@@ -89,7 +143,6 @@ class UserService:
             username=username,
             email=email,
             password=password,
-            avatar=None,
             role=UserRole.SUPERADMIN,
             is_active=True,
         )
@@ -99,7 +152,6 @@ class UserService:
         username: str,
         email: str,
         password: str,
-        avatar: Optional[str] = None,
     ) -> User:
         """
         Create a new user (public access).
@@ -112,31 +164,9 @@ class UserService:
             username=username,
             email=email,
             password=password,
-            avatar=avatar,
             role=UserRole.USER,
             is_active=True,
         )
-
-    async def validate_user_credentials(
-        self, username: str, plain_password: str
-    ) -> User:
-        """
-        Validate user credentials and return user ID
-
-        Raises:
-        - InvalidUserCredentialsError: if any credential is not valid
-        """
-        user: Optional[User] = await self.get_user_by_username(username)
-
-        if user is None:
-            raise InvalidUserCredentialsError(f"User '{username}' does not exist")
-
-        if not verify_password(plain_password, user.hashed_password):
-            raise InvalidUserCredentialsError(
-                f"Invalid password for the user '{username}'"
-            )
-
-        return user
 
     async def register_user_by_admin(
         self,
@@ -144,7 +174,6 @@ class UserService:
         username: str,
         email: str,
         password: str,
-        avatar: Optional[str] = None,
         role_str: str = UserRole.USER.value,
         is_active: bool = True,
     ) -> User:
@@ -161,51 +190,9 @@ class UserService:
             username=username,
             email=email,
             password=password,
-            avatar=avatar,
             role=role,
             is_active=is_active,
         )
-
-    async def confirm_user_email(self, user_id: int, email: str) -> User:
-        """
-        Validate that the user exists, matches the token data, and confirm email.
-
-        Raises:
-            InvalidUserCredentialsError: if user not found or email doesn't match
-            UserEmailIsAlreadyConfirmedError: if user email has been confirmed already
-        """
-        user = await self.repo.get_user_by_id(user_id)
-        if not user:
-            raise InvalidUserCredentialsError(
-                f"User with provided user_id={user_id} not found"
-            )
-
-        # Check if user is active before confirming
-        if not user.is_active:
-            logger.warning(
-                "Attempt to confirm email for inactive user %s",
-                UserDTO.from_orm(user),
-            )
-            raise UserInactiveError("Cannot confirm email for inactive user")
-
-        if user.email != email:
-            raise InvalidUserCredentialsError(
-                "Token email does not match current user email"
-            )
-
-        if user.is_email_confirmed:
-            raise UserEmailIsAlreadyConfirmedError()
-
-        updated_user = await self.repo.confirm_user_email_by_id(user_id)
-        if not updated_user:
-            # happens only if someone confirmed email in parallel
-            raise InvalidUserCredentialsError(
-                f"Failed to confirm email for user_id={user_id}"
-            )
-
-        logger.info("User email confirmed for user %s", UserDTO.from_orm(updated_user))
-
-        return updated_user
 
     async def get_all_users(
         self, requester: UserDTO, pagination: Dict[str, int], filters: Dict[str, Any]
@@ -296,7 +283,8 @@ class UserService:
         ):
             logger.warning(
                 (
-                    "Action is forbidden: %s attempted to view info about other inactive ADMIN user %s "
+                    "Action is forbidden: "
+                    "%s attempted to view info about other inactive ADMIN user %s "
                     "while not allowed to view that user"
                 ),
                 requester,
@@ -325,83 +313,93 @@ class UserService:
         """Retrieve a user by email or return None if not exists."""
         return await self.repo.get_user_by_email(email)
 
-    async def update_current_user(
+    async def update_user_avatar(
         self,
-        current_user: UserDTO,
-        contacts_service: ContactService,
-        email: Optional[str] = None,
-        old_password: Optional[str] = None,
-        password: Optional[str] = None,
-        avatar: Optional[str] = None,
-    ) -> Optional[UserWithStatsDTO]:
+        target_user: UserDTO,
+        new_avatar_value: Optional[str],
+    ) -> Optional[str]:
         """
-        Update a contact fully or partially.
+        Update current user avatar value in DB.
+
+        Args:
+            current_user: user performing the change
+            new_avatar_value: a URL or None provided by FileService
+
+        Returns:
+            Updated avatar URL or None if user disappeared.
 
         Raises:
-        - InvalidUserCredentialsError: if old password is not correct and can't
-        - BadProvidedDataError: if any field has bad or improper value
-        - UserConflictError: if new email conflicts with other registered email
+            BadProvidedDataError: if no actual changes.
         """
+        # 1. Normalize
+        normalized = (
+            new_avatar_value.strip() if isinstance(new_avatar_value, str) else None
+        )
 
-        update_user_data: Dict[str, Any] = {}
-
-        # 1. Check provided data
-
-        # password
-        if password:
-            UserService._validate_password_change(
-                old_password, password, current_user.hashed_password
-            )
-            update_user_data["hashed_password"] = get_password_hash(password)
-
-        # 2. Check for conflicts
-
-        # Email conflicts with already registered email
-        if email and email != current_user.email:
-            # Email change is forbidden until proper email-change flow is implemented
-            # ? Email change flow: Remove this error and add following additional checks:
-            # ? add: await self._validate_email_conflict(current_user, email)
-            # ? add: update_user_data["email"] = email
-            raise EmailChangeNotAllowedError(
-                "Email change is temporarily disabled until the email change flow is implemented."
-            )
-
-        # 3. Resolve avatar
-
-        # Avatar (with fallback to gravatar if None)
-        if avatar is not None and avatar != current_user.avatar:
-            if email:
-                update_user_data["avatar"] = UserService._try_fetch_gravatar(
-                    email, log_user=current_user
-                )
-            else:
-                update_user_data["avatar"] = avatar
-
+        # 2. Update user in DB
         updated_user = await self.repo.update_user_by_id(
-            current_user.id, update_user_data
+            target_user.id, {"avatar": normalized}
         )
         if not updated_user:
             return None
 
         logger.debug(
-            "%s performed self update using admin endpoint with data %s",
-            current_user,
-            {
-                "email": email,
-                "password": "<hidden>" if password else None,
-                "avatar": avatar,
-            },
+            "User %s changed avatar: %s -> %s",
+            target_user.id,
+            target_user.avatar,
+            normalized,
         )
 
-        # Return updated user (DTO with contacts_count)
-        contacts_count = await contacts_service.get_contacts_count(current_user.id)
+        # 3. Return updated user avatar url string
+        return updated_user.avatar
+
+    async def update_user_password(
+        self,
+        target_user: UserDTO,
+        current_password: str,
+        new_password: str,
+        contacts_service: ContactService,
+    ) -> Optional[UserWithStatsDTO]:
+        """
+        Update a current user password.
+
+        Raises:
+        - BadProvidedDataError: if any field has bad or improper value
+        - InvalidUserCredentialsError: if old password is not correct or doesn't match
+        """
+        # 1. Validate provided password data
+        UserService._validate_password_change(
+            current_password, new_password, target_user.hashed_password
+        )
+
+        # 2. Hash new password
+        hashed_password = get_password_hash(new_password)
+
+        # 3. Update user in DB
+        updated_user = await self.repo.update_user_by_id(
+            target_user.id, {"hashed_password": hashed_password}
+        )
+        if not updated_user:
+            return None
+
+        logger.debug("Current user %s assigned with a new password", target_user)
+
+        # 4. Get user contacts count
+        contacts_count = await contacts_service.get_contacts_count(target_user.id)
+
+        # 5. Return updated user DTO with contacts_count
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
+    # TODO: admins may invoke email change, but can't change other user email directly
+    # ? if email change reevaluate and decide if to change avatar based on a new email
+    # ? or email change may invoke avatar change later, when the new email is confirmed
+    # * Do not forget ot check for email exists conflict: _validate_email_conflict
+    # TODO: admins may invoke password reset flow, but can't change other user password directly
     async def update_user_by_admin(
         self,
         requester: UserDTO,
-        user_id: int,
-        update_data: dict,
+        target_user_id: int,
+        changes: Mapping[str, Any],
         contacts_service: ContactService,
     ) -> Optional[UserWithStatsDTO]:
         """
@@ -410,39 +408,48 @@ class UserService:
         - Admin: can update users, but cannot update other admins or any role field.
             Admin may update own profile except role.
         """
-        # 1. Check payload
+        # 1. Check payload data
 
-        # 1.1 Check if empty
-
-        if not update_data:
+        if not changes:
             # Nothing to update
             raise BadProvidedDataError(
                 {"Provided data": "No fields provided to update."}
             )
 
-        # Temporary guard to restrict email change until email change flow is not introduced
-        # ? Email change flow: Remove this guard when email change flow is implemented
-        if "email" in update_data:
+        # Email change is forbidden until proper email-change flow is implemented
+        if "email" in changes:
             raise EmailChangeNotAllowedError(
                 "Email change is temporarily disabled until the email change flow is implemented."
             )
 
+        new_role: Optional[UserRole] = None
+        if "role" in changes:
+            # Check if role exists and valid
+            try:
+                new_role = UserService._validate_role_exists(changes["role"])
+            except UserRoleIsInvalidError as exc:
+                raise BadProvidedDataError(
+                    {"role": f"Invalid role: {changes['role']}"}
+                ) from exc
+        new_username = changes.get("username", None)
+        is_active = changes.get("is_active", NOT_PROVIDED)
+
         # 2. Fetch target user
 
-        user = await self.repo.get_user_by_id(user_id)
-        if not user:
+        target_user = await self.repo.get_user_by_id(target_user_id)
+        if not target_user:
             return None
 
-        # 3. Self-update logic case - restrict and refer to current user update endpoint
+        # 3. Self-update is restricted - use current user update endpoint
 
-        if requester.id == user.id:
+        if requester.id == target_user.id:
             logger.warning(
                 (
                     "Action is forbidden: %s attempted to perform self-update via admin endpoint "
                     "of the following fields %s"
                 ),
                 requester,
-                update_data.keys(),
+                changes.keys(),
             )
             raise UserRolePermissionError(
                 (
@@ -453,7 +460,7 @@ class UserService:
 
         # 4. Update of another user
 
-        # 4.1 Requester / Target user role based restrictions
+        # 4.1 Requester - Target user role-based restrictions
 
         # Users and moderators cannot use admin update of other users
         if requester.role in {UserRole.USER, UserRole.MODERATOR}:
@@ -462,102 +469,104 @@ class UserService:
             )
 
         # Admin cannot modify other admins
-        if requester.role == UserRole.ADMIN and user.role == UserRole.ADMIN:
+        if requester.role == UserRole.ADMIN and target_user.role == UserRole.ADMIN:
             raise UserRolePermissionError("Admins cannot modify other admins")
 
         # Non-superadmin cannot modify superadmin user data
-        if requester.role != UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
+        if (
+            requester.role != UserRole.SUPERADMIN
+            and target_user.role == UserRole.SUPERADMIN
+        ):
             logger.warning(
                 (
                     "Action is forbidden: Non-superadmin %s requested update of SUPERADMIN %s "
                     "of the following fields: %s"
                 ),
                 requester,
-                UserDTO.from_orm(user),
-                update_data.keys(),
+                UserDTO.from_orm(target_user),
+                changes.keys(),
             )
             raise UserRolePermissionError("Cannot modify superadmin user")
 
-        # 4.2 Allow-list payload data filtering
+        # 4.2 Collect data to update
 
-        allowed_fields = {
-            "username",  # only superadmin
-            "avatar",
-            "role",  # only superadmin
-            "is_active",
-        }
-        cleaned_data = {k: v for k, v in update_data.items() if k in allowed_fields}
-        if not cleaned_data:
-            raise BadProvidedDataError(
-                {"Provided data": "No allowed fields to update."}
-            )
+        data_to_update: Dict[str, Any] = {}
+        changelog: Dict[str, str] = {}
 
-        # 4.3 Check resulting payload data and conflicts
-
-        # Role exists
-        if "role" in cleaned_data:
-            cleaned_data["role"] = UserService._validate_role_exists(
-                cleaned_data["role"]
-            )
-
-        # 4.4 Provided data / user role based restrictions
-
-        # Admin cannot change usernames
-        if "username" in cleaned_data and requester.role == UserRole.ADMIN:
-            raise UserRolePermissionError("Admins cannot change usernames")
-
-        # Only superadmin can change user role
-        if "role" in cleaned_data:
-            new_role = cleaned_data["role"]
+        # Username
+        if new_username and new_username != target_user.username:
             if requester.role != UserRole.SUPERADMIN:
-                # No other user can perform user change action
+                # Only superadmin can change usernames
+                raise UserRolePermissionError(
+                    f"{requester.role.value} cannot change usernames"
+                )
+            data_to_update["username"] = new_username
+            changelog["username"] = f"Assigned new username={new_username}"
+
+        # Role
+        if new_role and new_role != target_user.role:
+            if requester.role != UserRole.SUPERADMIN:
+                # No other user than superadmin can perform role change
                 logger.warning(
                     "Action is forbidden: Non-superadmin %s attempted to change role of %s %s",
                     requester,
-                    user.role.value.upper(),
-                    UserDTO.from_orm(user),
+                    target_user.role.value.upper(),
+                    UserDTO.from_orm(target_user),
                 )
                 raise UserRolePermissionError("Only superadmin can change user roles")
-            elif user.role == UserRole.SUPERADMIN and new_role != UserRole.SUPERADMIN:
+            elif (
+                target_user.role == UserRole.SUPERADMIN
+                and new_role != UserRole.SUPERADMIN
+            ):
                 # Superadmin can't level-down (downgrade) other superadmin role,
                 # but still may lever-up (upgrade) it for other non-superadmin users
                 logger.warning(
-                    "Action is forbidden: SUPERADMIN %s attempted to change other SUPERADMIN %s role to %s",
+                    (
+                        "Action is forbidden: "
+                        "SUPERADMIN %s attempted to change other SUPERADMIN %s role to %s"
+                    ),
                     requester,
-                    UserDTO.from_orm(user),
+                    UserDTO.from_orm(target_user),
                     new_role.upper(),
                 )
                 raise UserRolePermissionError(
                     "Superadmin cannot change another superadmin's role"
                 )
+            else:
+                data_to_update["role"] = new_role
+                changelog["role"] = f"Assigned new role={new_role.value}"
 
-        # 4.5. Perform update
+        # Is active
+        if is_active is not NOT_PROVIDED and is_active != target_user.is_active:
+            data_to_update["is_active"] = is_active
+            changelog["is_active"] = (
+                f"User is {'activated' if is_active else 'deactivated'}"
+            )
 
-        updated_user = await self.repo.update_user_by_id(user.id, cleaned_data)
+        # 4.3 Perform user update
+
+        updated_user = await self.repo.update_user_by_id(target_user.id, data_to_update)
         if not updated_user:
             return None
-
         logger.debug(
-            "%s updated user %s with field data %s",
+            "%s %s updated other %s user %s with new data: %s",
+            requester.role.value,
             requester,
-            UserDTO.from_orm(user),
-            {
-                k: v
-                for k, v in cleaned_data.items()
-                if v is not None and k not in {"password", "hashed_password"}
-            },
+            target_user.role.value,
+            UserDTO.from_orm(target_user),
+            ", ".join([f"{k}:{v}" for k, v in changelog.items()]),
         )
 
-        # 5. Get user contacts count
-        contacts_count = await contacts_service.get_contacts_count(user.id)
+        # 4.4 Get user contacts count
+        contacts_count = await contacts_service.get_contacts_count(target_user.id)
 
-        # 6. Return result (DTO with contacts_count)
+        # 4.5 Return updated user DTO with contacts_count
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
     async def delete_user_by_admin(
         self,
         requester: UserDTO,
-        user_id: int,
+        target_user_id: int,
         contacts_service: Optional[ContactService] = None,
     ) -> Optional[UserWithStatsDTO]:
         """
@@ -573,7 +582,7 @@ class UserService:
         """
         # 1. Fetch the target user
 
-        user = await self.repo.get_user_by_id(user_id)
+        user = await self.repo.get_user_by_id(target_user_id)
         if not user:
             return None
 
@@ -636,13 +645,74 @@ class UserService:
             hide_personal=True,
         )
 
+    async def validate_user_credentials(
+        self, username: str, plain_password: str
+    ) -> User:
+        """
+        Validate user credentials and return user ID
+
+        Raises:
+        - InvalidUserCredentialsError: if any credential is not valid
+        """
+        user: Optional[User] = await self.get_user_by_username(username)
+
+        if user is None:
+            raise InvalidUserCredentialsError(f"User '{username}' does not exist")
+
+        if not verify_password(plain_password, user.hashed_password):
+            raise InvalidUserCredentialsError(
+                f"Invalid password for the user '{username}'"
+            )
+
+        return user
+
+    async def confirm_user_email(self, user_id: int, email: str) -> User:
+        """
+        Validate that the user exists, matches the token data, and confirm email.
+
+        Raises:
+            InvalidUserCredentialsError: if user not found or email doesn't match
+            UserEmailIsAlreadyConfirmedError: if user email has been confirmed already
+        """
+        user = await self.repo.get_user_by_id(user_id)
+        if not user:
+            raise InvalidUserCredentialsError(
+                f"User with provided user_id={user_id} not found"
+            )
+
+        # Check if user is active before confirming
+        if not user.is_active:
+            logger.warning(
+                "Attempt to confirm email for inactive user %s",
+                UserDTO.from_orm(user),
+            )
+            raise UserInactiveError("Cannot confirm email for inactive user")
+
+        if user.email != email:
+            raise InvalidUserCredentialsError(
+                "Token email does not match current user email"
+            )
+
+        if user.is_email_confirmed:
+            raise UserEmailIsAlreadyConfirmedError()
+
+        updated_user = await self.repo.confirm_user_email_by_id(user_id)
+        if not updated_user:
+            # happens only if someone confirmed email in parallel
+            raise InvalidUserCredentialsError(
+                f"Failed to confirm email for user_id={user_id}"
+            )
+
+        logger.info("User email confirmed for user %s", UserDTO.from_orm(updated_user))
+
+        return updated_user
+
     async def _create_user_common(
         self,
         creator: Optional[UserDTO],
         username: str,
         email: str,
         password: str,
-        avatar: Optional[str],
         role: UserRole,
         is_active: bool = True,
     ) -> User:
@@ -660,15 +730,15 @@ class UserService:
         # Hash password
         hashed_password = get_password_hash(password)
 
-        # Avatar (fallback to gravatar)
-        avatar = avatar or UserService._try_fetch_gravatar(email, log_user=creator)
+        # Resolve default avatar
+        avatar_url = self.avatar_provider.resolve_default_avatar_or_none(email)
 
         # Create new user data
         new_user_data = {
             "username": username,
             "email": email,
             "hashed_password": hashed_password,
-            "avatar": avatar,
+            "avatar": avatar_url,
             "is_active": is_active,
             "role": role,
             "is_email_confirmed": False,
@@ -746,58 +816,3 @@ class UserService:
                 UserDTO.from_orm(existing_user),
             )
             raise UserConflictError({"email": "Email already taken"})
-
-    @staticmethod
-    def _validate_password_change(
-        old_password: Optional[str], new_password: str, hashed_old: str
-    ) -> None:
-        """
-        Validate old password before updating to new password.
-
-        Raises BadProvidedDataError if old password is missing or same as new.
-        Raises InvalidUserCredentialsError if old password doesn't match.
-        """
-        if not old_password:
-            raise BadProvidedDataError(
-                {"password": "Old password is required to change password"}
-            )
-        if new_password == old_password:
-            # Additional check of invalid scenario - should be handled by frontend
-            raise BadProvidedDataError(
-                {"password": "New password can't be the same as the old one"}
-            )
-        if not verify_password(old_password, hashed_old):
-            # Check for user authorization to change password
-            logger.warning(
-                "User failed to pass old password validation (possible stolen token)"
-            )
-            raise InvalidUserCredentialsError("Incorrect old password")
-
-    @staticmethod
-    def _validate_role_exists(role: Optional[Union[str, UserRole]]) -> UserRole:
-        """Ensure provided role exists in UserRole enum."""
-        if not role:
-            raise UserRoleIsInvalidError("Role cannot be empty or None")
-
-        if isinstance(role, UserRole):
-            return role
-
-        try:
-            return UserRole(role)
-        except ValueError as exc:
-            raise UserRoleIsInvalidError(f"Invalid role: '{role}'") from exc
-
-    @staticmethod
-    def _try_fetch_gravatar(email: str, log_user: Optional[UserDTO]) -> Optional[str]:
-        """Fetch gravatar avatar"""
-        if not email:
-            return None
-
-        try:
-            gravatar = Gravatar(email)
-            return gravatar.get_image(size=200, use_ssl=True)
-        except Exception as e:  # pylint: disable=broad-exception-caught
-            logger.debug(
-                "Failed to fetch Gravatar for %s: %s", log_user or "Unknown", e
-            )
-            return None
