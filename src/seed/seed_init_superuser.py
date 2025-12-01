@@ -6,7 +6,11 @@ import sys
 
 from src.db import session_manager
 from src.services import UserService
-from src.services.errors import InvalidUserCredentialsError, UserConflictError
+from src.services.errors import (
+    BadProvidedDataError,
+    InvalidUserCredentialsError,
+    UserConflictError,
+)
 from src.utils.logger import logger
 
 
@@ -22,8 +26,8 @@ async def ensure_superuser_exists() -> None:
         try:
             await user_service.create_superuser(username, email, password)
             logger.info("✔ Superuser created.")
-        except InvalidUserCredentialsError as e:
-            logger.error("✘ Failed to create superuser: %s", str(e))
+        except (BadProvidedDataError, InvalidUserCredentialsError) as exc:
+            logger.error("✘ Failed to create superuser: %s", str(exc))
             sys.exit(1)
         except UserConflictError:
             logger.debug("✔ Superuser already exists. No action needed.")
