@@ -101,6 +101,8 @@ async def register_user(
     background_tasks: BackgroundTasks,
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    mail_service: MailService = Depends(get_mail_service),
 ) -> UserRegisteredResponseSchema:
     """Create a new user."""
 
@@ -128,7 +130,9 @@ async def register_user(
     data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
     # Send email verification email
-    _send_verification_email(user, str(request.base_url), background_tasks)
+    _send_verification_email(
+        user, str(request.base_url), auth_service, mail_service, background_tasks
+    )
 
     return data
 
@@ -145,6 +149,8 @@ async def resend_verification_email(
     request: Request,
     background_tasks: BackgroundTasks,
     user_service: UserService = Depends(get_user_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    mail_service: MailService = Depends(get_mail_service),
 ) -> Dict[str, str]:
     """Resend verification email to the user email address."""
 
@@ -165,7 +171,9 @@ async def resend_verification_email(
         )
         return {"details": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED}
 
-    _send_verification_email(user, str(request.base_url), background_tasks)
+    _send_verification_email(
+        user, str(request.base_url), auth_service, mail_service, background_tasks
+    )
 
     return {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT}
 
@@ -345,9 +353,9 @@ async def verify_email(
 def _send_verification_email(
     user: User,
     base_url: str,
+    auth_service: AuthService,
+    mail_service: MailService,
     background_tasks: BackgroundTasks,
-    auth_service: AuthService = Depends(get_auth_service),
-    mail_service: MailService = Depends(get_mail_service),
 ) -> None:
     """Send email verification email"""
 
