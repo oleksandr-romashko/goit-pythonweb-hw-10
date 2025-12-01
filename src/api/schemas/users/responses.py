@@ -12,6 +12,8 @@ from pydantic import (
     EmailStr,
 )
 
+from src.utils.constants import MESSAGE_SUCCESS_PASSWORD_UPDATED
+
 from src.api.schemas.common.fields import EmailField
 from src.api.schemas.mixins import (
     IdMixin,
@@ -52,8 +54,6 @@ class UserAdminRegisteredUserResponseSchema(
     avatar: Optional[str] = AvatarField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
 
-    __tablename__ = "users"
-
 
 class UserAboutMeResponseSchema(UserResponseSchema, IdMixin):
     """Response schema to represent information about the current user."""
@@ -77,3 +77,15 @@ class UserAboutMeOneOfResponseSchema(RootModel):
     root: Annotated[
         Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema], "oneOf"
     ]
+
+
+class UserPasswordUpdateResponseSchema(BaseModel):
+    """Response schema to represent successfully updated password."""
+
+    detail: str = MESSAGE_SUCCESS_PASSWORD_UPDATED
+
+
+class UserAvatarUpdateResponseSchema(BaseModel):
+    """Response schema to represent updated user avatar success."""
+
+    avatar: Optional[str] = AvatarField(optional=True)

@@ -76,6 +76,7 @@ ON_ME_SUCCESS_RESPONSE: Dict = {
     },
 }
 
+
 on_get_user_admin_other_admin_example = (
     UserAdminRegisteredUserResponseSchema.generate_example_recursive()
 )

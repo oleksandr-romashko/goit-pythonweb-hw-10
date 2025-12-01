@@ -21,7 +21,7 @@ from src.api.schemas.errors import (
     BadEmptyValuesRequestErrorResponse,
     InvalidTokenRequestErrorResponse,
     EmailIsVerifiedErrorResponse,
-    BadMeValuesRequestErrorResponse,
+    BadMePasswordUpdateValuesRequestErrorResponse,
     AccessDeniedErrorResponse,
     AccessDeniedInvalidRoleErrorResponse,
     ContactNotFoundErrorResponse,
@@ -70,22 +70,23 @@ ON_VERIFY_EMAIL_BAD_REQUEST_RESPONSE: Dict = {
     },
 }
 
-ON_ME_UPDATE_BAD_REQUEST_RESPONSE_EMPTY_AND_BAD_VALUES: Dict = {
+ON_ME_PASSWORD_UPDATE_BAD_REQUEST: Dict = {
     400: {
         "description": MESSAGE_ERROR_BAD_REQUEST,
         "model": Union[
-            BadEmptyValuesRequestErrorResponse, BadMeValuesRequestErrorResponse
+            BadEmptyValuesRequestErrorResponse,
+            BadMePasswordUpdateValuesRequestErrorResponse,
         ],
         "content": {
             "application/json": {
                 "examples": {
                     "Body is empty": {
-                        "summary": "At least one field is required",
+                        "summary": "Request is empty",
                         "value": BadEmptyValuesRequestErrorResponse.generate_example_recursive(),
                     },
                     "Bad request values": {
-                        "summary": "Combined details on bad password and email fields",
-                        "value": BadMeValuesRequestErrorResponse.generate_example_recursive(),
+                        "summary": "Details on bad password fields",
+                        "value": BadMePasswordUpdateValuesRequestErrorResponse.generate_example_recursive(),
                     },
                 },
             }
