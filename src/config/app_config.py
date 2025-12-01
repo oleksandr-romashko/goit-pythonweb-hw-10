@@ -5,13 +5,11 @@ Loads environment variables from a `.env` file and provides a singleton
 Config instance with database connection settings.
 """
 
-from typing import Dict
-
 import os
 from pathlib import Path
 import sys
-from typing import List
 import tomllib
+from typing import List, Dict
 
 from dotenv import load_dotenv
 from pydantic import SecretStr
@@ -26,6 +24,11 @@ from src.utils.constants import (
     DEFAULT_MAIL_JWT_SECRET,
     DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
+    DEFAULT_CLOUDINARY_NAME,
+    DEFAULT_CLOUDINARY_API_KEY,
+    DEFAULT_CLOUDINARY_API_SECRET,
+    DEFAULT_SALT_USER,
+    DEFAULT_SALT_AVATAR,
 )
 
 BASE_DIR = Path(__file__).parent.parent.parent  # Root project directory
@@ -39,98 +42,14 @@ load_dotenv(BASE_DIR / ".env")  # Load variables from .env
 class Config:
     """Holds configuration values for the application, such as database URLs."""
 
-    # API web server settings
-    WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
-    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
-    STATIC_DIR = "static"
-    EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
-        "EMAIL_VERIFICATION_REDIRECT_URL", default=""
-    ).strip()
+    # ==========================
+    # Application settings
+    # ==========================
 
-    # CORS settings
-    # List of sources that are allowed to have access to the the app
-    _cors_origins: str = os.getenv("CORS_ORIGINS", default="")
-    CORS_ORIGINS: List[str] = (
-        [origin.strip() for origin in _cors_origins.split(",")] if _cors_origins else []
-    )
-
-    # Cache settings
-    CACHE_HOST: str = os.getenv("CACHE_HOST", default="cache-redis")
-    CACHE_PORT = int(os.getenv("CACHE_PORT", default="6379"))
-    CACHE_PASSWORD = os.getenv("CACHE_PASSWORD", default="")
-    CACHE_URL = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}/0"
-
-    # Database settings
-    DB_HOST: str = os.getenv("DB_HOST", default="api-db")
-    DB_PORT: int = int(os.getenv("DB_PORT", default="5432"))
-    DB_NAME: str = os.getenv("DB_NAME", default="postgres")
-    DB_APP_USER: str = os.getenv("DB_APP_USER", default="postgres")
-    DB_APP_USER_PASSWORD: str = os.getenv("DB_APP_USER_PASSWORD", default="")
-
-    DB_URL: str = (
-        f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_USER_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    )
-
-    # Database admin panel settings
-    DB_ADMIN_PANEL_ACCESS_EMAIL: str = os.getenv(
-        "DB_ADMIN_PANEL_ACCESS_EMAIL", default=DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL
-    )
-    DB_ADMIN_PANEL_PASSWORD = os.getenv("DB_ADMIN_PANEL_PASSWORD", default="")
-    DB_ADMIN_PANEL_PORT = int(os.getenv("DB_ADMIN_PANEL_PORT", default="5050"))
-
-    # Auth settings
-    AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", default="")
-    AUTH_JWT_ACCESS_EXPIRATION_SECONDS = int(
-        os.getenv("AUTH_JWT_ACCESS_EXPIRATION_SECONDS", default="3600")
-    )
-    AUTH_JWT_REFRESH_EXPIRATION_SECONDS = int(
-        os.getenv("AUTH_JWT_REFRESH_EXPIRATION_SECONDS", default="604800")
-    )
-    AUTH_JWT_ALGORITHM = os.getenv("AUTH_JWT_ALGORITHM", default="HS256")
-
-    # Not allowed usernames
-    SUPERADMIN_USERNAME = os.getenv("SUPERADMIN_USERNAME", default="superadmin")
-
-    RESERVED_USERNAMES: set[str] = {
-        "admin",
-        "administrator",
-        "superadmin",
-        "superuser",
-        "root",
-        "system",
-        "moderator",
-        "user",
-        "test",
-        "support",
-    }
-
-    @property
-    def effective_reserved_usernames(self) -> set[str]:
-        """Return reserved usernames excluding system admin accounts."""
-        return self.RESERVED_USERNAMES - {self.SUPERADMIN_USERNAME.lower()}
-
-    # Email settings
-    MAIL_JWT_SECRET = os.getenv("MAIL_JWT_SECRET", default="")
-    MAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS = int(
-        os.getenv("MAIL_JWT_EXPIRATION_SECONDS", default="604800")
-    )
-    MAIL_SERVER = os.getenv("MAIL_SERVER", default="smtp.meta.ua")
-    MAIL_PORT = os.getenv("MAIL_PORT", default="465")
-    MAIL_USERNAME = os.getenv("MAIL_USERNAME", default="")
-    MAIL_PASSWORD = SecretStr(os.getenv("MAIL_PASSWORD", default=""))
-    MAIL_FROM = os.getenv("MAIL_FROM", default=MAIL_USERNAME)
-    MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", default="Rest API Service")
-    template_dir: Path = Path(BASE_DIR / "src" / "templates").resolve()
-
-    # Domain logic settings
-
-    UPCOMING_BIRTHDAYS_PERIOD_DAYS: int = 7
-    DO_MOVE_CELEBRATION_FEB_29_TO_FEB_28: bool = True
+    # === App metadata ===
 
     with pyproject_toml_path.open("rb") as f:
         pyproject_data = tomllib.load(f)
-
-    # App metadata
 
     APP_TITLE = "Contacts Manager API"
     APP_DESCRIPTION = (
@@ -163,7 +82,9 @@ class Config:
         "<br><br>"
         "\n---\n"
     )
+
     # Version / author / contacts
+
     APP_VERSION = pyproject_data["project"].get("version", "0.0.0")
     APP_AUTHOR_NAME = pyproject_data["project"].get("authors", ["Unknown"])[0]["name"]
     APP_AUTHOR_EMAIL = pyproject_data["project"].get("authors", ["Unknown"])[0]["email"]
@@ -173,7 +94,9 @@ class Config:
         "url": APP_HOMEPAGE,
         "email": APP_AUTHOR_EMAIL,
     }
+
     # License
+
     APP_LICENSE_TITLE = (
         pyproject_data["project"]
         .get("license", "Unknown License")
@@ -187,10 +110,134 @@ class Config:
         "url": APP_LICENSE_URL,
     }
 
+    # === API & docs web server settings ===
 
-# === Exit on critical vars ===
+    WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
+    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    STATIC_DIR = "static"
+    EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
+        "EMAIL_VERIFICATION_REDIRECT_URL", default=""
+    ).strip()
 
-# Require required values and prevent from values being default values
+    # === CORS settings ===
+
+    # List of sources that are allowed to have access to the the app (user protection in browser)
+    _cors_origins: str = os.getenv("CORS_ORIGINS", default="")
+    CORS_ORIGINS: List[str] = (
+        [origin.strip() for origin in _cors_origins.split(",")] if _cors_origins else []
+    )
+
+    # === Auth settings ===
+
+    AUTH_JWT_SECRET = os.getenv("AUTH_JWT_SECRET", default="")
+    AUTH_JWT_ACCESS_EXPIRATION_SECONDS = int(
+        os.getenv("AUTH_JWT_ACCESS_EXPIRATION_SECONDS", default="3600")
+    )
+    AUTH_JWT_REFRESH_EXPIRATION_SECONDS = int(
+        os.getenv("AUTH_JWT_REFRESH_EXPIRATION_SECONDS", default="604800")
+    )
+    AUTH_JWT_ALGORITHM = os.getenv("AUTH_JWT_ALGORITHM", default="HS256")
+
+    # === Domain logic settings ===
+
+    # Users
+
+    # Default admin user
+    SUPERADMIN_USERNAME = os.getenv("SUPERADMIN_USERNAME", default="superadmin")
+
+    # Usernames - Not allowed (reserved) usernames
+    RESERVED_USERNAMES: set[str] = {
+        "admin",
+        "administrator",
+        "superadmin",
+        "superuser",
+        "root",
+        "system",
+        "moderator",
+        "user",
+        "test",
+        "support",
+    }
+
+    # Identifiers
+    SALT_USER = os.getenv("USER_IDENTIFIER_SALT", default="")
+    SALT_AVATAR = os.getenv("AVATAR_IDENTIFIER_SALT", default="")
+
+    # Celebrations logic
+
+    UPCOMING_BIRTHDAYS_PERIOD_DAYS: int = 7
+    DO_MOVE_CELEBRATION_FEB_29_TO_FEB_28: bool = True
+
+    @property
+    def effective_reserved_usernames(self) -> set[str]:
+        """Return reserved usernames excluding system admin accounts."""
+        return self.RESERVED_USERNAMES - {self.SUPERADMIN_USERNAME.lower()}
+
+    # === Avatar settings ===
+
+    AVATAR_IMAGE_SIZE: int = 250
+    AVATAR_BASE_FOLDER = "contacts_manager_api/images/avatars"
+
+    # === Email settings ===
+
+    MAIL_JWT_SECRET = os.getenv("MAIL_JWT_SECRET", default="")
+    MAIL_JWT_CONFIRMATION_EXPIRATION_SECONDS = int(
+        os.getenv("MAIL_JWT_EXPIRATION_SECONDS", default="604800")
+    )
+    MAIL_SERVER = os.getenv("MAIL_SERVER", default="smtp.meta.ua")
+    MAIL_PORT = os.getenv("MAIL_PORT", default="465")
+    MAIL_USERNAME = os.getenv("MAIL_USERNAME", default="")
+    MAIL_PASSWORD = SecretStr(os.getenv("MAIL_PASSWORD", default=""))
+    MAIL_FROM = os.getenv("MAIL_FROM", default=MAIL_USERNAME)
+    MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", default="Rest API Service")
+    template_dir: Path = Path(BASE_DIR / "src" / "templates").resolve()
+
+    # === Cloud storage settings ===
+
+    CLD_NAME = os.getenv("CLOUDINARY_NAME", default="")
+    CLD_API_KEY = os.getenv("CLOUDINARY_API_KEY", default="")
+    CLD_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", default="")
+    CLD_URL = f"cloudinary://{CLD_API_KEY}:{CLD_API_SECRET}@{CLD_NAME}"
+
+    # ==========================
+    # Cache settings
+    # ==========================
+
+    CACHE_HOST: str = os.getenv("CACHE_HOST", default="cache-redis")
+    CACHE_PORT = int(os.getenv("CACHE_PORT", default="6379"))
+    CACHE_PASSWORD = os.getenv("CACHE_PASSWORD", default="")
+    CACHE_URL = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}/0"
+
+    # ==========================
+    # Database settings
+    # ==========================
+
+    DB_HOST: str = os.getenv("DB_HOST", default="api-db")
+    DB_PORT: int = int(os.getenv("DB_PORT", default="5432"))
+    DB_NAME: str = os.getenv("DB_NAME", default="postgres")
+    DB_APP_USER: str = os.getenv("DB_APP_USER", default="postgres")
+    DB_APP_USER_PASSWORD: str = os.getenv("DB_APP_USER_PASSWORD", default="")
+
+    DB_URL: str = (
+        f"postgresql+asyncpg://{DB_APP_USER}:{DB_APP_USER_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    )
+
+    # ==========================
+    # Database admin panel settings
+    # ==========================
+
+    DB_ADMIN_PANEL_ACCESS_EMAIL: str = os.getenv(
+        "DB_ADMIN_PANEL_ACCESS_EMAIL", default=DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL
+    )
+    DB_ADMIN_PANEL_PASSWORD = os.getenv("DB_ADMIN_PANEL_PASSWORD", default="")
+    DB_ADMIN_PANEL_PORT = int(os.getenv("DB_ADMIN_PANEL_PORT", default="5050"))
+
+
+# ==================================================
+# Exit on critical vars and warn on value defaults
+# ==================================================
+#
+# (Require required values and prevent from values being default values)
 
 required_vars = [
     "AUTH_JWT_SECRET",
@@ -202,6 +249,9 @@ required_vars = [
     "MAIL_JWT_SECRET",
     "MAIL_USERNAME",
     "MAIL_PASSWORD",
+    "CLOUDINARY_NAME",
+    "CLOUDINARY_API_KEY",
+    "CLOUDINARY_API_SECRET",
 ]
 default_values = [
     DEFAULT_AUTH_JWT_SECRET,
@@ -211,6 +261,11 @@ default_values = [
     DEFAULT_MAIL_JWT_SECRET,
     DEFAULT_MAIL_PASSWORD,
     DEFAULT_DB_ADMIN_PANEL_PASSWORD,
+    DEFAULT_CLOUDINARY_NAME,
+    DEFAULT_CLOUDINARY_API_KEY,
+    DEFAULT_CLOUDINARY_API_SECRET,
+    DEFAULT_SALT_USER,
+    DEFAULT_SALT_AVATAR,
 ]
 errors = []
 for var in required_vars:
@@ -231,4 +286,5 @@ config = Config()
 
 
 def get_app_config() -> Config:
+    """Get app-wide application configuration with environment values"""
     return config

@@ -11,6 +11,7 @@ from .services_errors import (
     UserRolePermissionError,
     UserViewPermissionError,
     UserEmailIsAlreadyConfirmedError,
+    FileUploadFailedError,
 )
 
 __all__ = [
@@ -24,4 +25,5 @@ __all__ = [
     "UserRolePermissionError",
     "UserViewPermissionError",
     "UserEmailIsAlreadyConfirmedError",
+    "FileUploadFailedError",
 ]

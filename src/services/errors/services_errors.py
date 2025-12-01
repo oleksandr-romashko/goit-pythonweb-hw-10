@@ -5,6 +5,7 @@ from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED,
+    MESSAGE_ERROR_CLOUD_UPLOAD_ERROR,
 )
 
 
@@ -86,4 +87,11 @@ class UserViewPermissionError(Exception):
     """Raised when user is not allowed to view existing user data."""
 
     def __init__(self, message: str = MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS):
+        super().__init__(message)
+
+
+class FileUploadFailedError(Exception):
+    """Raised when upload of a file failed."""
+
+    def __init__(self, message: str = MESSAGE_ERROR_CLOUD_UPLOAD_ERROR):
         super().__init__(message)

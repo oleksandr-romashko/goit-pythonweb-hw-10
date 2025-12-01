@@ -4,11 +4,14 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.services import (
-    auth_service,
     AuthService,
-    UserService,
-    MailService,
+    auth_service,
+    FileService,
+    file_service,
     ContactService,
+    MailService,
+    mail_service,
+    UserService,
 )
 
 from .db_dependencies import get_db_session
@@ -17,6 +20,11 @@ from .db_dependencies import get_db_session
 def get_auth_service() -> AuthService:
     """Dependency provider for AuthService."""
     return auth_service
+
+
+def get_file_service() -> FileService:
+    """Dependency provider for FileService."""
+    return file_service
 
 
 def get_contacts_service(
@@ -28,7 +36,7 @@ def get_contacts_service(
 
 def get_mail_service() -> MailService:
     """Dependency provider for EmailService."""
-    return MailService()
+    return mail_service
 
 
 def get_user_service(
