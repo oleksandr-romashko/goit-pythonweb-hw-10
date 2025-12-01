@@ -5,6 +5,7 @@
         "dotenv",
         "dtos",
         "fastapi",
+        "Fastmail",
         "healthcheck",
         "healthchecker",
         "ilike",
