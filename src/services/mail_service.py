@@ -2,37 +2,18 @@
 
 from datetime import datetime
 
-from fastapi_mail import (
-    FastMail,
-    MessageSchema,
-    ConnectionConfig,
-    MessageType,
-    NameEmail,
-)
+from fastapi_mail import MessageSchema, MessageType, NameEmail
 
-from src.config import app_config
+from src.providers import MailProvider, FastMailProvider
 from src.utils.logger import logger
 
 
 class MailService:
     """Handles email sending functionalities."""
 
-    def __init__(self):
-        """Initialize the service with a email configuration."""
-        self.conf = ConnectionConfig(
-            MAIL_SERVER=app_config.MAIL_SERVER,
-            MAIL_PORT=int(app_config.MAIL_PORT),
-            MAIL_USERNAME=app_config.MAIL_USERNAME,
-            MAIL_PASSWORD=app_config.MAIL_PASSWORD,
-            MAIL_FROM=app_config.MAIL_FROM,
-            MAIL_FROM_NAME=app_config.MAIL_FROM_NAME,
-            MAIL_STARTTLS=False,
-            MAIL_SSL_TLS=True,
-            USE_CREDENTIALS=True,
-            VALIDATE_CERTS=True,
-            TEMPLATE_FOLDER=app_config.template_dir,
-        )
-        self.fm = FastMail(self.conf)
+    def __init__(self, mail_provider: MailProvider):
+        """Initialize the service with mail provider."""
+        self.mail_provider = mail_provider
 
     async def send_registration_welcome_email(
         self, email: str, username: str, host: str, verification_token: str
@@ -54,7 +35,7 @@ class MailService:
         )
 
         try:
-            await self.fm.send_message(
+            await self.mail_provider.send_message(
                 message,
                 template_name="registration_welcome_email.html",
             )
@@ -69,3 +50,7 @@ class MailService:
                 exc,
             )
             return
+
+
+mail_service = MailService(mail_provider=FastMailProvider())
+"""Default MailService instance."""
