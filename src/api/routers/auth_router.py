@@ -47,6 +47,7 @@ from src.utils.logger import logger
 from src.api.dependencies import (
     get_auth_service,
     get_contacts_service,
+    get_mail_service,
     get_user_service,
 )
 from src.api.errors import (
@@ -345,14 +346,14 @@ def _send_verification_email(
     user: User,
     base_url: str,
     background_tasks: BackgroundTasks,
+    auth_service: AuthService = Depends(get_auth_service),
+    mail_service: MailService = Depends(get_mail_service),
 ) -> None:
     """Send email verification email"""
-    auth_service = AuthService()
-    mail_service = MailService()
 
     # Note: token is not persistent (no side-effects in database),
     #       still it is more safe and best practice to to handle its creation
-    #       outside of background_tasks and sending of an email
+    #       outside of background_tasks below, where email is sent
     email_verification_token = auth_service.create_email_confirmation_token(
         user.id, user.email
     )
