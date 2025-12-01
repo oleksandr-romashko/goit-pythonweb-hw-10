@@ -10,6 +10,7 @@ MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT = (
     "Please check your email for the confirmation letter"
 )
 MESSAGE_SUCCESS_EMAIL_VERIFIED = "Email verified successfully"
+MESSAGE_SUCCESS_PASSWORD_UPDATED = "Password updated successfully"
 
 # Error messages
 MESSAGE_ERROR_DB_CONNECTION_ERROR = "Error connecting to the database"
@@ -32,7 +33,7 @@ MESSAGE_ERROR_ADMIN_CANNOT_CREATE_ADMIN = (
 )
 
 MESSAGE_ERROR_BAD_REQUEST = "Bad request"
-MESSAGE_ERROR_BAD_REQUEST_EMPTY = "At least one field must be provided for update"
+MESSAGE_ERROR_BAD_REQUEST_EMPTY = "Request can't be empty"
 MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN = "Bad request: Missing token parameter"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
@@ -58,6 +59,9 @@ MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED = (
     "User does not exist or you are not allowed to perform this action with this user"
 )
 
+MESSAGE_ERROR_CLOUD_UPLOAD_ERROR = "Failed to upload file to the cloud"
+MESSAGE_ERROR_CLOUD_DELETE_ERROR = "Failed to delete file in the cloud"
+
 # Default ENV variables values
 
 DEFAULT_AUTH_JWT_SECRET = "your_auth_jwt_secret_here"
@@ -67,6 +71,11 @@ DEFAULT_DB_APP_USER_PASSWORD = "your_db_app_user_password_here"
 DEFAULT_DB_ADMIN_PANEL_ACCESS_EMAIL = "pgadmin@local.dev"
 DEFAULT_DB_ADMIN_PANEL_PASSWORD = "your_pgadmin_user_secret_password_here"
 DEFAULT_SUPERADMIN_EMAIL = "superadmin@example.com"
-DEFAULT_SUPERADMIN_PASSWORD = "superadmin_secret_password"
+DEFAULT_SUPERADMIN_PASSWORD = "your_superadmin_secret_password"
 DEFAULT_MAIL_JWT_SECRET = "your_mail_jwt_secret_here"
-DEFAULT_MAIL_PASSWORD = "mail_secret_password"
+DEFAULT_MAIL_PASSWORD = "your_mail_secret_password"
+DEFAULT_CLOUDINARY_NAME = "your_cloud_name"
+DEFAULT_CLOUDINARY_API_KEY = "your_cloudinary_api_key"
+DEFAULT_CLOUDINARY_API_SECRET = "your_api_cloudinary_api_secret"
+DEFAULT_SALT_USER = "your_user_identifier_salt"
+DEFAULT_SALT_AVATAR = "your_avatar_identifier_salt"
