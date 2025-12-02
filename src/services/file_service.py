@@ -17,8 +17,8 @@ from src.providers import (
     GravatarProvider,
 )
 from src.providers.errors import (
-    CloudAvatarUploadError,
-    CloudAvatarDeletionError,
+    CloudProviderAvatarUploadError,
+    CloudProviderAvatarDeletionError,
     GravatarResolveError,
 )
 from src.utils.logger import logger
@@ -45,7 +45,7 @@ class FileService:
         """Upload new avatar to cloud storage and return upload metadata."""
         try:
             return await self.cloud_provider.upload_avatar(file, user)
-        except CloudAvatarUploadError as exc:
+        except CloudProviderAvatarUploadError as exc:
             raise FileUploadFailedError(
                 f"Failed to upload new avatar for user_id={user.id}"
             ) from exc
@@ -68,7 +68,7 @@ class FileService:
         """
         try:
             await self.cloud_provider.delete_avatar(user)
-        except CloudAvatarDeletionError as exc:
+        except CloudProviderAvatarDeletionError as exc:
             # best-effort:
             # Log and continue - deletion failures shouldn't break user flow
             logger.error(

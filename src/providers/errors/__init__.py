@@ -1,13 +1,19 @@
 """Module exposing service-level custom exceptions."""
 
 from .providers_errors import (
-    CloudAvatarDeletionError,
-    CloudAvatarUploadError,
+    CloudProviderError,
+    CloudProviderAvatarDeletionError,
+    CloudProviderAvatarUploadError,
+    CloudProviderUploadError,
+    CloudProviderDeletionError,
     GravatarResolveError,
 )
 
 __all__ = [
-    "CloudAvatarDeletionError",
-    "CloudAvatarUploadError",
+    "CloudProviderError",
+    "CloudProviderAvatarDeletionError",
+    "CloudProviderAvatarUploadError",
+    "CloudProviderUploadError",
+    "CloudProviderDeletionError",
     "GravatarResolveError",
 ]
