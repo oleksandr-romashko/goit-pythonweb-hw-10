@@ -394,7 +394,7 @@ async def _authenticate_and_issue_token(
         raise_http_401_error(MESSAGE_ERROR_INVALID_LOGIN_CREDENTIALS)
 
     # Check if user email is confirmed (except for superadmin)
-    if not user.is_email_confirmed and user.role is not UserRole.SUPERADMIN:
+    if not user.is_email_confirmed and user.role != UserRole.SUPERADMIN:
         logger.debug(
             "Failed login attempt: Email not verified for username '%s' (user_id=%s).",
             username,

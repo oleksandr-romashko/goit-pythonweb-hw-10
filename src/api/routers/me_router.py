@@ -4,11 +4,10 @@ Users API endpoints.
 Provides operations for users.
 """
 
-from typing import Optional, Union, Dict
+from typing import Optional, Union
 
 from fastapi import APIRouter, Depends, status, UploadFile, File, BackgroundTasks
 
-from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import (
     ContactService,
@@ -50,9 +49,7 @@ from src.api.schemas.users.responses import (
 )
 
 # TODO: Add additional single action routes:
-# * PATCH /me/password — solely password change
-# * PATCH /me/avatar — solely avatar change
-# * PATCH /me/email — solely email change
+# * PATCH /me/email — solely email change (email change flow)
 # TODO: Evaluate adding DELETE for /me or /me/delete — self-delete your account (anonymize data?)
 
 router = APIRouter(
@@ -75,7 +72,7 @@ router = APIRouter(
     responses={**ON_ME_SUCCESS_RESPONSE},
 )
 async def get_me(
-    user: User = Depends(get_current_active_user()),
+    user: UserDTO = Depends(get_current_active_user()),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> Union[UserAboutMeResponseSchema, UserAboutMeAdminResponseSchema]:
     """Return current user information."""
@@ -107,7 +104,7 @@ async def get_me(
 )
 async def update_user_password(
     body: UserUpdatePasswordRequestSchema,
-    user: User = Depends(get_current_active_user()),
+    user: UserDTO = Depends(get_current_active_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserPasswordUpdateResponseSchema:
@@ -118,7 +115,7 @@ async def update_user_password(
     try:
         updated_user_dto: Optional[UserWithStatsDTO] = (
             await user_service.update_user_password(
-                UserDTO.from_orm(user),
+                user,
                 current_password,
                 new_password,
                 contacts_service,
@@ -134,7 +131,7 @@ async def update_user_password(
     if updated_user_dto is None:
         logger.warning(
             "User %s became inaccessible (removed or blocked) during/after update",
-            UserDTO.from_orm(user),
+            user,
         )
         raise_http_401_error()
 
@@ -156,23 +153,20 @@ async def update_user_password(
 )
 async def update_user_avatar(
     file: UploadFile = File(),
-    user: User = Depends(get_current_active_user()),
+    user: UserDTO = Depends(get_current_active_user()),
     file_service: FileService = Depends(get_file_service),
     user_service: UserService = Depends(get_user_service),
 ) -> UserAvatarUpdateResponseSchema:
     """Upload or replace current user's avatar."""
-
-    user_dto = UserDTO.from_orm(user)
-
     # 1. Upload avatar file to storage
     try:
-        upload_result = await file_service.upload_avatar(file.file, user_dto)
+        upload_result = await file_service.upload_avatar(file.file, user)
     except FileUploadFailedError as exc:
         logger.error(
             "Couldn't upload avatar file %s (%s Bytes) to cloud for %s: %s",
             file.filename,
             file.size,
-            user_dto,
+            user,
             str(exc),
         )
         raise_http_500_error("Problems with avatar uploading")
@@ -180,12 +174,12 @@ async def update_user_avatar(
     new_avatar_url = upload_result["url"]
 
     # 2. Update DB
-    updated_user = await user_service.update_user_avatar(user_dto, new_avatar_url)
+    updated_user = await user_service.update_user_avatar(user, new_avatar_url)
     # Edge case - user deleted or became inaccessible during update
     if updated_user is None:
         logger.warning(
             "User %s became inaccessible during/after avatar update",
-            user_dto,
+            user,
         )
         raise_http_401_error()
 
@@ -207,31 +201,29 @@ async def update_user_avatar(
 )
 async def reset_user_avatar(
     background_tasks: BackgroundTasks,
-    user: User = Depends(get_current_active_user()),
+    user: UserDTO = Depends(get_current_active_user()),
     user_service: UserService = Depends(get_user_service),
     file_service: FileService = Depends(get_file_service),
 ) -> UserAvatarUpdateResponseSchema:
     """Reset user's avatar to Gravatar (or remove entirely)."""
-
-    user_dto = UserDTO.from_orm(user)
-    old_avatar_url = user_dto.avatar
+    old_avatar_url = user.avatar
 
     # 1. Reset avatar value
-    new_avatar_value = file_service.reset_avatar(user_dto)
+    new_avatar_value = file_service.reset_avatar(user)
 
     # 2. Update DB
-    updated_user = await user_service.update_user_avatar(user_dto, new_avatar_value)
+    updated_user = await user_service.update_user_avatar(user, new_avatar_value)
     # Edge case: user deleted during operation
     if updated_user is None:
         logger.warning(
             "User %s became inaccessible during/after avatar reset",
-            user_dto,
+            user,
         )
         raise_http_401_error()
 
     # 3. Remove old avatar in the background
     if old_avatar_url:
-        background_tasks.add_task(file_service.delete_avatar, user_dto)
+        background_tasks.add_task(file_service.delete_avatar, user)
 
     return UserAvatarUpdateResponseSchema(avatar=new_avatar_value)
 

@@ -1,12 +1,13 @@
 """FastAPI auth dependencies"""
 
-from typing import TypeAlias, Callable, Awaitable, Optional
+from typing import TypeAlias, Any, Callable, Awaitable, Optional, Coroutine
 
 from fastapi import Depends
 
 from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import UserService
+from src.services.dtos import UserDTO
 from src.utils.logger import logger
 
 from src.utils.constants import (
@@ -23,7 +24,7 @@ from .token_dependencies import get_current_user_id
 
 # === Custom dependency check type ===
 
-Check: TypeAlias = Callable[[User], Awaitable[None]]
+Check: TypeAlias = Callable[[UserDTO], Awaitable[None]]
 """Validation check functions to be executed"""
 
 # === Separate dependencies checks class ===
@@ -43,7 +44,7 @@ class Require:
         SUPERADMIN active status is ignored to prevent soft lock (SUPERADMIN is always active).
         """
 
-        async def check(user: User) -> None:
+        async def check(user: UserDTO) -> None:
             """Check ensures user has active status."""
             if not user.is_active and user.role != UserRole.SUPERADMIN:
                 logger.warning(
@@ -67,7 +68,7 @@ class Require:
             HTTPException (403): If the user role in not within required roles.
         """
 
-        async def check(user: User) -> None:
+        async def check(user: UserDTO) -> None:
             """Check user role within allowed roles"""
             if user.role not in roles:
                 logger.warning(
@@ -88,7 +89,9 @@ class Require:
 # === Factory for creating get_current_user_* dependency ===
 
 
-def get_current_user_factory(*checks: Check):
+def get_current_user_factory(
+    *checks: Check,
+) -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Factory to create current user dependency.
 
@@ -107,19 +110,22 @@ def get_current_user_factory(*checks: Check):
     async def dependency(
         user_id: int = Depends(get_current_user_id),
         user_service: UserService = Depends(get_user_service),
-    ) -> User:
+    ) -> UserDTO:
         """Dependency that returns the current user based on user ID obtained from JWT token."""
 
         # Get user from the database
-        user: Optional[User] = await user_service.get_user_by_id(user_id)
+        user_orm: Optional[User] = await user_service.get_user_by_id(user_id)
 
         # Check if users exists
-        if user is None:
+        if user_orm is None:
             logger.warning(
                 "User not found for user_id=%s. Token is valid, but the user wasn't found.",
                 user_id,
             )
             raise_http_401_error(MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS)
+
+        # Transform orm object into dto object
+        user: UserDTO = UserDTO.from_orm(user_orm)
 
         # Call all other provided optional checks
         for check in checks:
@@ -144,7 +150,7 @@ def get_current_user_factory(*checks: Check):
 # === Alias dependencies for each user type and status, facilitating factory ===
 
 
-def get_current_user():
+def get_current_user() -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Dependency that returns the current user.
 
@@ -157,7 +163,7 @@ def get_current_user():
     return get_current_user_factory()
 
 
-def get_current_active_user():
+def get_current_active_user() -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Dependency that returns the currently active user.
 
@@ -170,7 +176,7 @@ def get_current_active_user():
     return get_current_user_factory(Require.user_is_active())
 
 
-def get_current_active_moderator_user():
+def get_current_active_moderator_user() -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Dependency that returns the current user with moderator-level access.
 
@@ -185,7 +191,7 @@ def get_current_active_moderator_user():
     )
 
 
-def get_current_active_admin_user():
+def get_current_active_admin_user() -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Dependency that returns the current user with admin-level access.
 
@@ -200,7 +206,7 @@ def get_current_active_admin_user():
     )
 
 
-def get_current_superadmin_user():
+def get_current_superadmin_user() -> Callable[..., Coroutine[Any, Any, UserDTO]]:
     """
     Dependency that returns the current SUPERADMIN user.
 

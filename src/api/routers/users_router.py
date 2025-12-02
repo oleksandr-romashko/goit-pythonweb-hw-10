@@ -82,7 +82,7 @@ router = APIRouter(
 )
 async def create_user_by_admin(
     body: UserAdminCreateRequestSchema,
-    user: User = Depends(get_current_active_admin_user()),
+    user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
@@ -91,10 +91,9 @@ async def create_user_by_admin(
     Accessible only by admin and superadmin.
     Returns the created user info.
     """
-    creator_dto = UserDTO.from_orm(user)
     try:
         new_user: User = await user_service.register_user_by_admin(
-            creator=creator_dto,
+            creator=user,
             username=body.username,
             email=body.email,
             password=body.password,
@@ -136,7 +135,7 @@ async def create_user_by_admin(
 async def get_all_users(
     pagination: PaginationFilterRequestSchema = Depends(),
     filters: UsersFilterRequestSchema = Depends(),
-    user: User = Depends(get_current_active_admin_user()),
+    user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
 ) -> PaginatedGenericResponseSchema[UserAdminRegisteredUserResponseSchema]:
     """
@@ -145,10 +144,8 @@ async def get_all_users(
     Accessible only by admin and superadmin.
     Returns a list of users and pagination stats.
     """
-    requester_dto = UserDTO.from_orm(user)
-
     users_dto, total_count = await user_service.get_all_users(
-        requester_dto, pagination.model_dump(), filters.model_dump()
+        user, pagination.model_dump(), filters.model_dump()
     )
 
     # Convert users DTOs to Pydantic schemas
@@ -186,7 +183,7 @@ async def get_all_users(
 )
 async def get_user_by_id(
     user_id: int,
-    user: User = Depends(get_current_active_admin_user()),
+    user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
@@ -196,10 +193,9 @@ async def get_user_by_id(
     Accessible only by admin and superadmin.
     Returns the created user info.
     """
-    requester_dto = UserDTO.from_orm(user)
     try:
         user_dto = await user_service.get_user_by_id_for_admin(
-            requester=requester_dto, user_id=user_id, contacts_service=contacts_service
+            requester=user, user_id=user_id, contacts_service=contacts_service
         )
     except UserViewPermissionError:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
@@ -234,7 +230,7 @@ async def get_user_by_id(
 async def update_user(
     user_id: int,
     body: UserUpdateAdminRequestSchema,
-    user: User = Depends(get_current_active_admin_user()),
+    user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
@@ -244,12 +240,11 @@ async def update_user(
     Accessible only by admin and superadmin.
     Returns the updated user info.
     """
-    requester_dto = UserDTO.from_orm(user)
     update_payload = body.model_dump(exclude_unset=True)
 
     try:
         updated_dto = await user_service.update_user_by_admin(
-            requester=requester_dto,
+            requester=user,
             target_user_id=user_id,
             changes=update_payload,
             contacts_service=contacts_service,
@@ -293,7 +288,7 @@ async def update_user(
 )
 async def delete_user(
     user_id: int,
-    user: User = Depends(get_current_active_admin_user()),
+    user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
@@ -304,11 +299,9 @@ async def delete_user(
 
     Returns the deleted user's data (for confirmation/logging purposes).
     """
-    requester_dto = UserDTO.from_orm(user)
-
     try:
         deleted_dto = await user_service.delete_user_by_admin(
-            requester=requester_dto,
+            requester=user,
             target_user_id=user_id,
             contacts_service=contacts_service,
         )
