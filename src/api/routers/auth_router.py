@@ -183,7 +183,7 @@ async def resend_verification_email(
     summary="User login",
     description=(
         "Authenticate user based on `username` and `password` in the request body "
-        "and return a valid JWT access token."
+        "and return a valid JWT auth tokens."
     ),
     response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
@@ -195,7 +195,7 @@ async def login_user(
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
 ) -> LoginTokenResponseSchema:
-    """Validate user credentials using request body and issue access token."""
+    """Validate user credentials using request body and issue auth tokens."""
     return await _authenticate_and_issue_token(
         body.username, body.password, auth_service, user_service
     )
@@ -206,7 +206,7 @@ async def login_user(
     summary="OAuth2 scheme user login",
     description=(
         "Authenticate user based on OAuth2 login scheme "
-        "and return a valid JWT access token."
+        "and return a valid JWT auth tokens."
     ),
     response_model=LoginTokenResponseSchema,
     status_code=status.HTTP_200_OK,
@@ -218,7 +218,7 @@ async def oauth2_login(
     auth_service: AuthService = Depends(get_auth_service),
     user_service: UserService = Depends(get_user_service),
 ) -> LoginTokenResponseSchema:
-    """Validate user credentials using OAuth2 scheme and issue access token."""
+    """Validate user credentials using OAuth2 scheme and issue auth tokens."""
     return await _authenticate_and_issue_token(
         form_data.username, form_data.password, auth_service, user_service
     )
