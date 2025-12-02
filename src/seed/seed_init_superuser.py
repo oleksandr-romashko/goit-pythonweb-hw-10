@@ -30,7 +30,7 @@ async def ensure_superuser_exists() -> None:
             logger.error("✘ Failed to create superuser: %s", str(exc))
             sys.exit(1)
         except UserConflictError:
-            logger.debug("✔ Superuser already exists. No action needed.")
+            logger.info("✔ Superuser already exists. No action needed.")
 
 
 if __name__ == "__main__":
