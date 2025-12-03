@@ -345,4 +345,4 @@ class AuthService:
 
 
 auth_service = AuthService()
-"""Singleton instance of AuthService."""
+"""Default AuthService instance."""
