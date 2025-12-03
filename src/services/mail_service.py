@@ -4,7 +4,7 @@ from datetime import datetime
 
 from fastapi_mail import MessageSchema, MessageType, NameEmail
 
-from src.providers import MailProvider, FastMailProvider
+from src.providers.mail_provider import MailProvider, FastMailProvider
 from src.utils.logger import logger
 
 

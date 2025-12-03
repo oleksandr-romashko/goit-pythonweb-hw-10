@@ -6,7 +6,6 @@ Provides operations for users.
 
 from fastapi import APIRouter, Depends, status
 
-from src.db.models import User
 from src.services import UserService, ContactService
 from src.services.dtos import UserDTO
 from src.services.errors import (
@@ -92,7 +91,7 @@ async def create_user_by_admin(
     Returns the created user info.
     """
     try:
-        new_user: User = await user_service.register_user_by_admin(
+        new_user: UserDTO = await user_service.register_user_by_admin(
             creator=user,
             username=body.username,
             email=body.email,

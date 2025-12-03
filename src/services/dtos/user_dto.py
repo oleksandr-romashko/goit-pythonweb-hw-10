@@ -1,6 +1,6 @@
 """DTO module representing user"""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional, Self
 
 from src.db.models import User
@@ -42,3 +42,23 @@ class UserDTO:
             is_email_confirmed=user.is_email_confirmed,
             avatar=getattr(user, "avatar", None),
         )
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "UserDTO":
+        """Create DTO from dictionary."""
+        return cls(
+            id=data["id"],
+            username=data["username"],
+            email=data["email"],
+            hashed_password=data["hashed_password"],
+            role=UserRole(data["role"]),  # str -> Enum
+            is_active=data["is_active"],
+            is_email_confirmed=data["is_email_confirmed"],
+            avatar=data.get("avatar"),
+        )
+
+    def to_dict(self) -> dict:
+        """Convert DTO to dictionary for JSON serialization."""
+        data = asdict(self)
+        data["role"] = self.role.value if isinstance(self.role, UserRole) else self.role
+        return data

@@ -112,7 +112,7 @@ async def register_user(
 
     # Create a new user in the database
     try:
-        user: User = await user_service.register_user(
+        user: UserDTO = await user_service.register_user(
             body.username, body.email, body.password
         )
         logger.info(
@@ -154,7 +154,7 @@ async def resend_verification_email(
 ) -> Dict[str, str]:
     """Resend verification email to the user email address."""
 
-    user: Optional[User] = await user_service.get_user_by_email(body.email)
+    user: Optional[UserDTO] = await user_service.get_user_by_email(body.email)
 
     if not user:
         # Security best practice: don't reveal whether the email exists.
@@ -167,7 +167,7 @@ async def resend_verification_email(
     if user.is_email_confirmed:
         logger.debug(
             "Can't resend verification email for user whose email is already verified: %s",
-            UserDTO.from_orm(user),
+            user,
         )
         return {"details": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED}
 
@@ -315,7 +315,7 @@ async def verify_email(
 
     # Confirm user email
     try:
-        user = await user_service.confirm_user_email(user_id, email)
+        user: UserDTO = await user_service.confirm_user_email(user_id, email)
     except InvalidUserCredentialsError as exc:
         logger.debug(
             "Can't verify user email for user_id=%s and email=%s: %s",
@@ -341,7 +341,7 @@ async def verify_email(
         )
         raise_http_400_error(MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED)
 
-    logger.info("Email verified for %s", UserDTO.from_orm(user))
+    logger.info("Email verified for %s", user)
 
     redirect_url = app_config.EMAIL_VERIFICATION_REDIRECT_URL
     if redirect_url:
@@ -351,7 +351,7 @@ async def verify_email(
 
 
 def _send_verification_email(
-    user: User,
+    user: UserDTO,
     base_url: str,
     auth_service: AuthService,
     mail_service: MailService,
@@ -384,7 +384,7 @@ async def _authenticate_and_issue_token(
     """Process user credentials and issue access token"""
     # Check user credentials
     try:
-        user: User = await user_service.validate_user_credentials(username, password)
+        user: UserDTO = await user_service.validate_user_credentials(username, password)
     except InvalidUserCredentialsError as exc:
         logger.warning(
             "Failed login attempt: Not valid credentials for username '%s': %s",

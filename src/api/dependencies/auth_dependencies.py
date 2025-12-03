@@ -4,7 +4,6 @@ from typing import TypeAlias, Any, Callable, Awaitable, Optional, Coroutine
 
 from fastapi import Depends
 
-from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import UserService
 from src.services.dtos import UserDTO

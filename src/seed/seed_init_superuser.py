@@ -5,6 +5,7 @@ import os
 import sys
 
 from src.db import session_manager
+from src.providers.cache_provider.connection import get_redis
 from src.services import UserService
 from src.services.errors import (
     BadProvidedDataError,
@@ -21,7 +22,8 @@ async def ensure_superuser_exists() -> None:
     password = os.getenv("SUPERADMIN_PASSWORD", "")
 
     async with session_manager.session() as db_session:
-        user_service = UserService(db_session)
+        redis_cache = get_redis()
+        user_service = UserService(db_session, cache=redis_cache)
 
         try:
             await user_service.create_superuser(username, email, password)

@@ -1,7 +1,7 @@
 """Main services module providing access to all service classes and instances."""
 
 from .auth_service import auth_service, AuthService, AuthTokenType
-from .file_service import FileService, file_service
+from .file_service import FileService
 from .contact_service import ContactService
 from .mail_service import MailService, mail_service
 from .markers import NOT_PROVIDED
@@ -14,7 +14,6 @@ __all__ = [
     "AuthTokenType",
     "ContactService",
     "FileService",
-    "file_service",
     "MailService",
     "mail_service",
     "UserService",

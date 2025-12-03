@@ -9,13 +9,8 @@ It exposes a clean API for use in FastAPI endpoints.
 
 from typing import Optional, Union, BinaryIO
 
-from src.config import app_config
-from src.providers import (
-    AvatarUploadResult,
-    CloudProvider,
-    CloudinaryCloudProvider,
-    GravatarProvider,
-)
+from src.providers.avatar_provider import GravatarProvider
+from src.providers.cloud_provider import CloudProvider, AvatarUploadResult
 from src.providers.errors import (
     CloudProviderAvatarUploadError,
     CloudProviderAvatarDeletionError,
@@ -77,14 +72,3 @@ class FileService:
                 user.avatar,
                 exc,
             )
-
-
-file_service = FileService(
-    cloud_provider=CloudinaryCloudProvider(
-        cloud_name=app_config.CLD_NAME,
-        api_key=app_config.CLD_API_KEY,
-        api_secret=app_config.CLD_API_SECRET,
-    ),
-    gravatar_provider=GravatarProvider(),
-)
-"""Default FileService instance."""

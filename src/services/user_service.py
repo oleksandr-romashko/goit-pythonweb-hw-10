@@ -2,12 +2,18 @@
 
 from typing import Optional, Union, Any, Mapping, Dict, List, Tuple
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.providers.avatar_provider import GravatarProvider
+from src.providers.cache_provider.user_cache import (
+    get_user_cache,
+    set_user_cache,
+    invalidate_user_cache,
+)
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
@@ -59,10 +65,13 @@ class UserService:
     def __init__(
         self,
         db_session: AsyncSession,
+        *,
         avatar_provider: Optional[GravatarProvider] = None,
+        cache: Redis,
     ):
         """Initialize the service with a users repository and other dependencies."""
         self.repo = UsersRepository(db_session)
+        self.cache = cache
         self.avatar_provider = avatar_provider or GravatarProvider()
 
     @staticmethod
@@ -152,7 +161,7 @@ class UserService:
         username: str,
         email: str,
         password: str,
-    ) -> User:
+    ) -> UserDTO:
         """
         Create a new user (public access).
 
@@ -176,7 +185,7 @@ class UserService:
         password: str,
         role_str: str = UserRole.USER.value,
         is_active: bool = True,
-    ) -> User:
+    ) -> UserDTO:
         """Create a new user by an admin or superadmin."""
 
         # Provided role check
@@ -185,6 +194,7 @@ class UserService:
         # Role restriction logic check
         self._validate_creation_permissions(creator, role, username, email)
 
+        # Get user from DB
         return await self._create_user_common(
             creator=creator,
             username=username,
@@ -246,8 +256,25 @@ class UserService:
 
     async def get_user_by_id(self, user_id: int) -> Optional[UserDTO]:
         """Retrieve a user dto by ID or return None if not exists."""
+        # 1. Try get user from cache
+        user_cached: Optional[UserDTO] = await get_user_cache(user_id)
+        if user_cached:
+            logger.debug("[CACHE HIT] user_id=%s", user_cached.id)
+            return user_cached
+        logger.debug("[CACHE MISS] user_id=%s", user_id)
+
+        # 2. If not in cache --> request user from DB
         user_orm = await self.repo.get_user_by_id(user_id)
-        return UserDTO.from_orm(user_orm) if user_orm else None
+        if not user_orm:
+            return None
+
+        # 3. Convert ORM to DTO object
+        user_dto = UserDTO.from_orm(user_orm)
+
+        # 4. Save to cache
+        await set_user_cache(user_id, user_dto)
+
+        return user_dto
 
     async def get_user_by_id_for_admin(
         self,
@@ -306,13 +333,15 @@ class UserService:
 
         return UserWithStatsDTO.from_orm_with_count(user, hide_personal=True)
 
-    async def get_user_by_username(self, username: str) -> Optional[User]:
+    async def get_user_by_username(self, username: str) -> Optional[UserDTO]:
         """Retrieve a user by username or return None if not exists."""
-        return await self.repo.get_user_by_username(username)
+        user_orm = await self.repo.get_user_by_username(username)
+        return UserDTO.from_orm(user_orm) if user_orm else None
 
-    async def get_user_by_email(self, email: str) -> Optional[User]:
+    async def get_user_by_email(self, email: str) -> Optional[UserDTO]:
         """Retrieve a user by email or return None if not exists."""
-        return await self.repo.get_user_by_email(email)
+        user_orm: Optional[User] = await self.repo.get_user_by_email(email)
+        return UserDTO.from_orm(user_orm) if user_orm else None
 
     async def update_user_avatar(
         self,
@@ -343,7 +372,6 @@ class UserService:
         )
         if not updated_user:
             return None
-
         logger.debug(
             "User %s changed avatar: %s -> %s",
             target_user.id,
@@ -351,7 +379,10 @@ class UserService:
             normalized,
         )
 
-        # 3. Return updated user avatar url string
+        # 3. Update user cache
+        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+
+        # 4. Return updated user avatar url string
         return updated_user.avatar
 
     async def update_user_password(
@@ -382,13 +413,15 @@ class UserService:
         )
         if not updated_user:
             return None
-
         logger.debug("Current user %s assigned with a new password", target_user)
 
-        # 4. Get user contacts count
+        # 4. Update user cache
+        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+
+        # 5. Get user contacts count
         contacts_count = await contacts_service.get_contacts_count(target_user.id)
 
-        # 5. Return updated user DTO with contacts_count
+        # 6. Return updated user DTO with contacts_count
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
     # TODO: admins may invoke email change, but can't change other user email directly
@@ -437,11 +470,14 @@ class UserService:
 
         # 2. Fetch target user
 
-        target_user = await self.repo.get_user_by_id(target_user_id)
-        if not target_user:
+        target_user_orm = await self.repo.get_user_by_id(target_user_id)
+        if not target_user_orm:
             return None
 
-        # 3. Self-update is restricted - use current user update endpoint
+        # 3. Convert orm to dto object
+        target_user = UserDTO.from_orm(target_user_orm)
+
+        # 4. Self-update is restricted - use current user update endpoint
 
         if requester.id == target_user.id:
             logger.warning(
@@ -459,9 +495,9 @@ class UserService:
                 )
             )
 
-        # 4. Update of another user
+        # 5. Update of another user
 
-        # 4.1 Requester - Target user role-based restrictions
+        # 5.1 Requester - Target user role-based restrictions
 
         # Users and moderators cannot use admin update of other users
         if requester.role in {UserRole.USER, UserRole.MODERATOR}:
@@ -484,12 +520,12 @@ class UserService:
                     "of the following fields: %s"
                 ),
                 requester,
-                UserDTO.from_orm(target_user),
+                target_user,
                 changes.keys(),
             )
             raise UserRolePermissionError("Cannot modify superadmin user")
 
-        # 4.2 Collect data to update
+        # 5.2 Collect data to update
 
         data_to_update: Dict[str, Any] = {}
         changelog: Dict[str, str] = {}
@@ -512,7 +548,7 @@ class UserService:
                     "Action is forbidden: Non-superadmin %s attempted to change role of %s %s",
                     requester,
                     target_user.role.value.upper(),
-                    UserDTO.from_orm(target_user),
+                    target_user,
                 )
                 raise UserRolePermissionError("Only superadmin can change user roles")
             elif (
@@ -527,7 +563,7 @@ class UserService:
                         "SUPERADMIN %s attempted to change other SUPERADMIN %s role to %s"
                     ),
                     requester,
-                    UserDTO.from_orm(target_user),
+                    target_user,
                     new_role.upper(),
                 )
                 raise UserRolePermissionError(
@@ -544,7 +580,7 @@ class UserService:
                 f"User is {'activated' if is_active else 'deactivated'}"
             )
 
-        # 4.3 Perform user update
+        # 5.3 Perform user update
 
         updated_user = await self.repo.update_user_by_id(target_user.id, data_to_update)
         if not updated_user:
@@ -554,14 +590,17 @@ class UserService:
             requester.role.value,
             requester,
             target_user.role.value,
-            UserDTO.from_orm(target_user),
+            target_user,
             ", ".join([f"{k}:{v}" for k, v in changelog.items()]),
         )
 
-        # 4.4 Get user contacts count
+        # 5.4 Update user cache
+        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+
+        # 5.5 Get user contacts count
         contacts_count = await contacts_service.get_contacts_count(target_user.id)
 
-        # 4.5 Return updated user DTO with contacts_count
+        # 5.6 Return updated user DTO with contacts_count
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
     async def delete_user_by_admin(
@@ -629,8 +668,6 @@ class UserService:
         if not deleted_user:
             return None
 
-        # 6. Logging
-
         logger.info(
             "%s %s deleted %s %s",
             requester.role.value.upper(),
@@ -638,6 +675,9 @@ class UserService:
             deleted_user.role.value.upper(),
             UserDTO.from_orm(user),
         )
+
+        # 6. Delete user cache
+        await invalidate_user_cache(target_user_id)
 
         # 7. Return deleted user info with stats
         return UserWithStatsDTO.from_orm_with_count(
@@ -648,15 +688,14 @@ class UserService:
 
     async def validate_user_credentials(
         self, username: str, plain_password: str
-    ) -> User:
+    ) -> UserDTO:
         """
         Validate user credentials and return user ID
 
         Raises:
         - InvalidUserCredentialsError: if any credential is not valid
         """
-        user: Optional[User] = await self.get_user_by_username(username)
-
+        user: Optional[UserDTO] = await self.get_user_by_username(username)
         if user is None:
             raise InvalidUserCredentialsError(f"User '{username}' does not exist")
 
@@ -667,7 +706,7 @@ class UserService:
 
         return user
 
-    async def confirm_user_email(self, user_id: int, email: str) -> User:
+    async def confirm_user_email(self, user_id: int, email: str) -> UserDTO:
         """
         Validate that the user exists, matches the token data, and confirm email.
 
@@ -675,18 +714,19 @@ class UserService:
             InvalidUserCredentialsError: if user not found or email doesn't match
             UserEmailIsAlreadyConfirmedError: if user email has been confirmed already
         """
-        user = await self.repo.get_user_by_id(user_id)
-        if not user:
+        # Get user from db
+        user_orm = await self.repo.get_user_by_id(user_id)
+        if not user_orm:
             raise InvalidUserCredentialsError(
                 f"User with provided user_id={user_id} not found"
             )
 
+        # Convert to dto
+        user = UserDTO.from_orm(user_orm)
+
         # Check if user is active before confirming
         if not user.is_active:
-            logger.warning(
-                "Attempt to confirm email for inactive user %s",
-                UserDTO.from_orm(user),
-            )
+            logger.warning("Attempt to confirm email for inactive user %s", user)
             raise UserInactiveError("Cannot confirm email for inactive user")
 
         if user.email != email:
@@ -697,16 +737,23 @@ class UserService:
         if user.is_email_confirmed:
             raise UserEmailIsAlreadyConfirmedError()
 
-        updated_user = await self.repo.confirm_user_email_by_id(user_id)
-        if not updated_user:
+        updated_user_orm: Optional[User] = await self.repo.confirm_user_email_by_id(
+            user_id
+        )
+        if not updated_user_orm:
             # happens only if someone confirmed email in parallel
             raise InvalidUserCredentialsError(
                 f"Failed to confirm email for user_id={user_id}"
             )
+        logger.info(
+            "User email confirmed for user %s", UserDTO.from_orm(updated_user_orm)
+        )
 
-        logger.info("User email confirmed for user %s", UserDTO.from_orm(updated_user))
+        updated_user_dto = UserDTO.from_orm(updated_user_orm)
 
-        return updated_user
+        await set_user_cache(user_id, updated_user_dto)
+
+        return updated_user_dto
 
     async def _create_user_common(
         self,
@@ -716,7 +763,7 @@ class UserService:
         password: str,
         role: UserRole,
         is_active: bool = True,
-    ) -> User:
+    ) -> UserDTO:
         """Common internal method for user creation logic."""
 
         # Conflicts check
@@ -761,7 +808,7 @@ class UserService:
             new_user_info,
         )
 
-        return new_user
+        return UserDTO.from_orm(new_user)
 
     def _validate_creation_permissions(
         self, creator: UserDTO, role: UserRole, username: str, email: str

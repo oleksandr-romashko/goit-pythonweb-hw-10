@@ -22,7 +22,7 @@ from fastapi.exceptions import HTTPException
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 
-from src.cache import get_redis
+from src.providers.cache_provider.connection import get_redis, RedisDB
 from src.utils.constants import MESSAGE_ERROR_TOO_MANY_REQUESTS
 from src.utils.logger import logger
 
@@ -142,7 +142,7 @@ async def exceed_limit_callback(
 async def init_rate_limiter() -> None:
     """Initialize rate limiter"""
     logger.info("Initializing request rate limiter...")
-    redis = get_redis()
+    redis = get_redis(RedisDB.RATELIMIT)
     await FastAPILimiter.init(
         redis,
         identifier=default_identifier,

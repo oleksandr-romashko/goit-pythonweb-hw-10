@@ -204,9 +204,10 @@ class Config:
     # ==========================
 
     CACHE_HOST: str = os.getenv("CACHE_HOST", default="cache-redis")
-    CACHE_PORT = int(os.getenv("CACHE_PORT", default="6379"))
-    CACHE_PASSWORD = os.getenv("CACHE_PASSWORD", default="")
-    CACHE_URL = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}/0"
+    CACHE_PORT: int = int(os.getenv("CACHE_PORT", default="6379"))
+    CACHE_PASSWORD: str = os.getenv("CACHE_PASSWORD", default="")
+    CACHE_URL_BASE: str = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}"
+    CACHE_USER_TTL: int = 60
 
     # ==========================
     # Database settings
