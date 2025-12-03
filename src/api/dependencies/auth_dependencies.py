@@ -113,19 +113,16 @@ def get_current_user_factory(
     ) -> UserDTO:
         """Dependency that returns the current user based on user ID obtained from JWT token."""
 
-        # Get user from the database
-        user_orm: Optional[User] = await user_service.get_user_by_id(user_id)
+        # Get user DTO from the database
+        user: Optional[UserDTO] = await user_service.get_user_by_id(user_id)
 
         # Check if users exists
-        if user_orm is None:
+        if user is None:
             logger.warning(
                 "User not found for user_id=%s. Token is valid, but the user wasn't found.",
                 user_id,
             )
             raise_http_401_error(MESSAGE_ERROR_INVALID_TOKEN_AUTH_CREDENTIALS)
-
-        # Transform orm object into dto object
-        user: UserDTO = UserDTO.from_orm(user_orm)
 
         # Call all other provided optional checks
         for check in checks:

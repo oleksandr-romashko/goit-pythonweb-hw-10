@@ -244,9 +244,10 @@ class UserService:
 
         return result, total_count
 
-    async def get_user_by_id(self, user_id: int) -> Optional[User]:
-        """Retrieve a user by ID or return None if not exists."""
-        return await self.repo.get_user_by_id(user_id)
+    async def get_user_by_id(self, user_id: int) -> Optional[UserDTO]:
+        """Retrieve a user dto by ID or return None if not exists."""
+        user_orm = await self.repo.get_user_by_id(user_id)
+        return UserDTO.from_orm(user_orm) if user_orm else None
 
     async def get_user_by_id_for_admin(
         self,
