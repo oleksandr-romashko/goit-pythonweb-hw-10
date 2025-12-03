@@ -92,14 +92,3 @@ app.include_router(contacts_router, prefix="/api")
 
 # Static files serving
 app.mount("/static", StaticFiles(directory=app_config.STATIC_DIR), name="static")
-
-if __name__ == "__main__":
-    # Run Uvicorn server for local development.
-    import uvicorn
-
-    uvicorn.run(
-        "src.main:app",
-        host="0.0.0.0",
-        port=app_config.WEB_PORT,
-        reload=app_config.DEBUG,
-    )

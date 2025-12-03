@@ -37,8 +37,6 @@ services:
   api-cache:
     container_name: ${CACHE_HOST}
     image: redis:alpine
-    # ports:
-    #   - "${CACHE_PORT:-6379}:6379"  # Do not expose for better security.
     restart: always
     command: ["redis-server", "--requirepass", "${CACHE_PASSWORD}"]
     healthcheck:
@@ -55,8 +53,6 @@ services:
   db:
     container_name: ${DB_HOST}
     image: postgres:17.5-alpine3.22
-    # ports:
-    #   - "${DB_PORT:-5432}:5432"  # Do not expose for better security and accessing db via pgAdmin tool only.
     restart: always
     env_file:
       - .env
