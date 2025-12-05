@@ -32,6 +32,10 @@ from src.config import app_config
 from src.utils.logger import logger
 
 
+# TODO: Add feature - blacklist (cached)
+# TODO: Add feature - whitelist set in .env for trusted resources omitting additional checks
+
+
 @asynccontextmanager
 async def lifespan(
     _app: FastAPI,

@@ -5,7 +5,7 @@ from datetime import date
 
 from pydantic import BaseModel, field_validator
 
-
+# TODO: Remove commented if won't be used
 # def birthdate_not_in_the_future_validator(cls: Type[BaseModel]) -> Type[BaseModel]:
 #     """Decorator adding birthday field validation"""
 
@@ -14,7 +14,7 @@ from pydantic import BaseModel, field_validator
 
 #         @field_validator("birthdate")
 #         @classmethod
-#         def _check_birthdate_not_in_future(cls, value: Optional[date]) -> date | None:
+#         def _check_birthdate_not_in_future(cls, value: Optional[date]) -> Optional[date]:
 #             """Performs check if birthday is in the past or today"""
 #             if value is None:
 #                 return value

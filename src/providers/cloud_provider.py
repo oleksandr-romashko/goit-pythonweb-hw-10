@@ -29,7 +29,7 @@ class AvatarUploadResult(TypedDict):
 
 
 class CloudProvider(ABC):
-    """Abstract class for a cloud provider"""
+    """Abstract interface for a cloud provider"""
 
     @abstractmethod
     async def upload_avatar(
