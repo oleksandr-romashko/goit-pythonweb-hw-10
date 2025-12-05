@@ -2,18 +2,13 @@
 
 from typing import Optional, Union, Any, Mapping, Dict, List, Tuple
 
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.providers.avatar_provider import GravatarProvider
-from src.providers.cache_provider.user_cache import (
-    get_user_cache,
-    set_user_cache,
-    invalidate_user_cache,
-)
+from src.providers.cache_provider.user_cache import UserRedisCacheProvider
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
@@ -67,11 +62,11 @@ class UserService:
         db_session: AsyncSession,
         *,
         avatar_provider: Optional[GravatarProvider] = None,
-        cache: Redis,
-    ):
+        user_cache: Optional[UserRedisCacheProvider] = None,
+    ) -> None:
         """Initialize the service with a users repository and other dependencies."""
         self.repo = UsersRepository(db_session)
-        self.cache = cache
+        self.user_cache = user_cache
         self.avatar_provider = avatar_provider or GravatarProvider()
 
     @staticmethod
@@ -257,13 +252,16 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> Optional[UserDTO]:
         """Retrieve a user dto by ID or return None if not exists."""
         # 1. Try get user from cache
-        user_cached: Optional[UserDTO] = await get_user_cache(user_id)
-        if user_cached:
-            logger.debug("[CACHE HIT] user_id=%s", user_cached.id)
-            return user_cached
-        logger.debug("[CACHE MISS] user_id=%s", user_id)
+        if self.user_cache:
+            user_cached: Optional[UserDTO] = await self.user_cache.get_user(user_id)
+            if user_cached is not None:
+                logger.debug("[CACHE HIT] User for user_id=%s", user_cached.id)
+                return user_cached
+            logger.debug("[CACHE MISS] User for user_id=%s", user_id)
+        else:
+            logger.debug("[CACHE ERROR] User cache is disabled")
 
-        # 2. If not in cache --> request user from DB
+        # 2. If not in cache --> request from DB
         user_orm = await self.repo.get_user_by_id(user_id)
         if not user_orm:
             return None
@@ -272,7 +270,8 @@ class UserService:
         user_dto = UserDTO.from_orm(user_orm)
 
         # 4. Save to cache
-        await set_user_cache(user_id, user_dto)
+        if self.user_cache:
+            await self.user_cache.set_user(user_id, user_dto)
 
         return user_dto
 
@@ -380,7 +379,10 @@ class UserService:
         )
 
         # 3. Update user cache
-        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+        if self.user_cache:
+            await self.user_cache.set_user(
+                target_user.id, UserDTO.from_orm(updated_user)
+            )
 
         # 4. Return updated user avatar url string
         return updated_user.avatar
@@ -416,7 +418,10 @@ class UserService:
         logger.debug("Current user %s assigned with a new password", target_user)
 
         # 4. Update user cache
-        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+        if self.user_cache:
+            await self.user_cache.set_user(
+                target_user.id, UserDTO.from_orm(updated_user)
+            )
 
         # 5. Get user contacts count
         contacts_count = await contacts_service.get_contacts_count(target_user.id)
@@ -595,7 +600,10 @@ class UserService:
         )
 
         # 5.4 Update user cache
-        await set_user_cache(target_user.id, UserDTO.from_orm(updated_user))
+        if self.user_cache:
+            await self.user_cache.set_user(
+                target_user.id, UserDTO.from_orm(updated_user)
+            )
 
         # 5.5 Get user contacts count
         contacts_count = await contacts_service.get_contacts_count(target_user.id)
@@ -677,7 +685,8 @@ class UserService:
         )
 
         # 6. Delete user cache
-        await invalidate_user_cache(target_user_id)
+        if self.user_cache:
+            await self.user_cache.invalidate_user(target_user_id)
 
         # 7. Return deleted user info with stats
         return UserWithStatsDTO.from_orm_with_count(
@@ -751,7 +760,8 @@ class UserService:
 
         updated_user_dto = UserDTO.from_orm(updated_user_orm)
 
-        await set_user_cache(user_id, updated_user_dto)
+        if self.user_cache:
+            await self.user_cache.set_user(user_id, updated_user_dto)
 
         return updated_user_dto
 

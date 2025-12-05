@@ -208,6 +208,7 @@ class Config:
     CACHE_PASSWORD: str = os.getenv("CACHE_PASSWORD", default="")
     CACHE_URL_BASE: str = f"redis://:{CACHE_PASSWORD}@{CACHE_HOST}:{CACHE_PORT}"
     CACHE_USER_TTL: int = 60
+    CACHE_CONTACTS_COUNT_TTL: int = 60
 
     # ==========================
     # Database settings

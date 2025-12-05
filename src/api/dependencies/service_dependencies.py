@@ -1,9 +1,12 @@
 """FastAPI service dependencies"""
 
 from fastapi import Depends
-from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.providers.cache_provider.user_cache import UserRedisCacheProvider
+from src.providers.cache_provider.contact_cache import (
+    ContactsCountUserRedisCacheProvider,
+)
 from src.services import (
     AuthService,
     auth_service,
@@ -14,9 +17,13 @@ from src.services import (
     UserService,
 )
 
-from .cache_dependencies import get_app_cache
 from .db_dependencies import get_db_session
-from .provider_dependencies import get_cloud_provider, get_gravatar_provider
+from .provider_dependencies import (
+    get_contacts_count_cache_provider,
+    get_cloud_provider,
+    get_gravatar_provider,
+    get_user_cache_provider,
+)
 
 # ---------- Singleton services (stateless) ----------
 
@@ -41,14 +48,17 @@ def get_mail_service() -> MailService:
 
 def get_contacts_service(
     db_session: AsyncSession = Depends(get_db_session),
+    count_per_user_cache: ContactsCountUserRedisCacheProvider = Depends(
+        get_contacts_count_cache_provider
+    ),
 ) -> ContactService:
     """Dependency provider for ContactsService."""
-    return ContactService(db_session)
+    return ContactService(db_session, count_per_user_cache=count_per_user_cache)
 
 
 def get_user_service(
     db_session: AsyncSession = Depends(get_db_session),
-    cache: Redis = Depends(get_app_cache),
+    user_cache: UserRedisCacheProvider = Depends(get_user_cache_provider),
 ) -> UserService:
     """Dependency provider for UserService."""
-    return UserService(db_session, cache=cache)
+    return UserService(db_session, user_cache=user_cache)

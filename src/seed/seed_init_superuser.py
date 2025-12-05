@@ -22,8 +22,7 @@ async def ensure_superuser_exists() -> None:
     password = os.getenv("SUPERADMIN_PASSWORD", "")
 
     async with session_manager.session() as db_session:
-        redis_cache = get_redis()
-        user_service = UserService(db_session, cache=redis_cache)
+        user_service = UserService(db_session)
 
         try:
             await user_service.create_superuser(username, email, password)
