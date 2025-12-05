@@ -108,7 +108,7 @@ This guide will help you set up the environment and run the project.
 
 Before you begin, make sure you have the following installed:
 
-* **[Python 3.11.*](https://www.python.org/downloads/)** (tested with Python 3.11.13) — Required to run the application locally.
+* **[Python 3.12.*](https://www.python.org/downloads/)** (tested with Python 3.12.3) — Required to run the application locally.
 * **[Poetry](https://python-poetry.org/)** - To manage dependencies in virtual environment.
 * **[Docker](https://www.docker.com/)** using PostgreSQL (tested with PostgreSQL 17.5) — Used to containerize the application in a unified environment using Docker or Docker Compose.
 * Optional - for local development:
