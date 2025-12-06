@@ -15,12 +15,14 @@ Usage:
 
 from math import ceil
 from enum import Enum, auto
+import sys
 from typing import NoReturn
 
 from fastapi import Request, Response, status
 from fastapi.exceptions import HTTPException
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
+from redis.exceptions import ConnectionError as RedisConnectionError
 
 from src.providers.cache_provider.connection import get_redis, RedisDB
 from src.utils.constants import MESSAGE_ERROR_TOO_MANY_REQUESTS
@@ -143,13 +145,22 @@ async def init_rate_limiter() -> None:
     """Initialize rate limiter"""
     logger.info("Initializing request rate limiter...")
     redis = get_redis(RedisDB.RATELIMIT)
-    await FastAPILimiter.init(
-        redis,
-        identifier=default_identifier,
-        http_callback=exceed_limit_callback,
-        prefix="ratelimit",
-    )
-    logger.info("Request rate limiter initialization success.")
+    try:
+        await FastAPILimiter.init(
+            redis,
+            identifier=default_identifier,
+            http_callback=exceed_limit_callback,
+            prefix="ratelimit",
+        )
+        logger.info("Request rate limiter initialization success.")
+    except RedisConnectionError:
+        logger.critical(
+            (
+                "✘ Failed to connect to Redis service with rate limiter. "
+                "Please make sure username-password pair is valid or user is enabled. "
+            ),
+        )
+        sys.exit(1)
 
 
 async def close_rate_limiter() -> None:
