@@ -10,6 +10,7 @@ from typing import AsyncIterator
 
 from fastapi import FastAPI, Depends
 from fastapi.staticfiles import StaticFiles
+import uvicorn
 
 from src.api.errors.handlers import init_exception_handlers
 from src.api.extensions import (
@@ -80,7 +81,7 @@ init_cors(app)
 init_user_context(app)
 
 # Processing time header middleware
-if app_config.DEBUG:
+if app_config.DEV_ENV:
     add_processing_time_header(app)
 
 # Error handlers for common errors and consistent response
@@ -96,3 +97,13 @@ app.include_router(contacts_router, prefix="/api")
 
 # Static files serving
 app.mount("/static", StaticFiles(directory=app_config.STATIC_DIR), name="static")
+
+if __name__ == "__main__":
+    # Local run only (used by debugger)
+    uvicorn.run(
+        "src.main:app",
+        host="0.0.0.0",
+        port=app_config.WEB_PORT,
+        reload=True,
+        log_level="debug",
+    )
