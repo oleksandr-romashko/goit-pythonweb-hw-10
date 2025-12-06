@@ -27,4 +27,4 @@ fi
 
 # PROD MODE
 echo "🚀  Starting FastAPI (PROD mode)..."
-exec poetry run python -m src.main
+exec poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000
