@@ -68,7 +68,7 @@ def init_exception_handlers(app: FastAPI) -> None:
         Logs error and return unify sanitized response.
         """
         logger.exception("Unhandled exception: %s", exc)
-        if app_config.DEBUG:
+        if app_config.DEV_ENV:
             return JSONResponse(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 content={

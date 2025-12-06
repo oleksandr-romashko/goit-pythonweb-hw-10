@@ -19,12 +19,19 @@ echo "✅ Superuser setup complete."
 
 echo "3) ⚙️  Starting FastAPI..."
 
-# DEV MODE <-- If arguments detected, run the command
-if [ "$#" -gt 0 ]; then
-    echo "🔧 DEV mode detected, executing custom command: $@"
-    exec "$@"
+# DEV MODE
+if [ "$APP_ENV" = "dev" ]; then
+    echo "🔧 DEV mode detected. Starting FastAPI (DEV mode)..."
+    exec poetry run uvicorn src.main:app \
+        --reload \
+        --host 0.0.0.0 \
+        --port 8000 \
+        --log-level debug
 fi
 
 # PROD MODE
-echo "🚀  Starting FastAPI (PROD mode)..."
-exec poetry run uvicorn src.main:app --host 0.0.0.0 --port 8000
+echo "🚀 PROD mode detected. Starting FastAPI (PROD mode)..."
+exec poetry run uvicorn src.main:app \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --log-level info

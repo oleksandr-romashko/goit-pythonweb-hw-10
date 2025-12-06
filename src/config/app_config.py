@@ -45,6 +45,13 @@ class Config:
     """Holds configuration values for the application, such as database URLs."""
 
     # ==========================
+    # Environment settings
+    # ==========================
+
+    APP_ENV = os.getenv("APP_ENV", "prod").lower()
+    DEV_ENV = APP_ENV == "dev"
+
+    # ==========================
     # Application settings
     # ==========================
 
@@ -114,8 +121,7 @@ class Config:
 
     # === API & docs web server settings ===
 
-    WEB_PORT = int(os.getenv("WEB_PORT", default="3000"))
-    DEBUG = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+    WEB_PORT = int(os.getenv("WEB_PORT", default="8000"))
     STATIC_DIR = "static"
     EMAIL_VERIFICATION_REDIRECT_URL = os.getenv(
         "EMAIL_VERIFICATION_REDIRECT_URL", default=""

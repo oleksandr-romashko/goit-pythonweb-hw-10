@@ -1,20 +1,18 @@
 services:
   api:
+    env_file:
+      - .env
     environment:
-      LOG_LEVEL: debug
+      APP_ENV: dev
     volumes:
       - .:/app
-    command: >
-      poetry run uvicorn src.main:app
-      --reload
-      --host 0.0.0.0
-      --port 8000
-      --log-level debug
-
+    
   api-cache:
       ports:
-      - "${CACHE_PORT:-6379}:6379"  # For accessing cache directly using own Redis client
+      - "${CACHE_PORT:-6379}:6379"  # For accessing cache directly using own cache client
 
   db:
     ports:
       - "${DB_PORT:-5432}:5432"  # For accessing db directly using own DB client
+    env_file:
+      - .env

@@ -32,8 +32,8 @@ def init_cors(app: FastAPI) -> None:
     """
     origins = app_config.CORS_ORIGINS
 
-    if not origins and app_config.DEBUG:
-        logger.warning("No CORS_ORIGINS specified, using '*' for DEBUG mode.")
+    if not origins and app_config.DEV_ENV:
+        logger.warning("No CORS_ORIGINS specified, using '*' for DEV mode.")
         origins = ["*"]
 
     if not origins:
@@ -48,21 +48,21 @@ def init_cors(app: FastAPI) -> None:
             "CORS wildcard ('*') is enabled. "
             "This should only be used in development mode "
             "(currently development mode is %s).",
-            "ON" if app_config.DEBUG else "OFF",
+            "ON" if app_config.DEV_ENV else "OFF",
         )
 
     app.add_middleware(
         CORSMiddleware,
         allow_credentials=True,  # allow cross-domain req incl. credentials (cookies, auth headers)
-        allow_origins=["*"] if app_config.DEBUG else origins,  # allowed sources
+        allow_origins=["*"] if app_config.DEV_ENV else origins,  # allowed sources
         allow_methods=(
             ["*"]
-            if app_config.DEBUG
+            if app_config.DEV_ENV
             else ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
         ),
         allow_headers=(
             ["*"]
-            if app_config.DEBUG
+            if app_config.DEV_ENV
             else [
                 "Authorization",
                 "Content-Type",
