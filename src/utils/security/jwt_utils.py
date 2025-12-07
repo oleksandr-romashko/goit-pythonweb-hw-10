@@ -103,7 +103,7 @@ def issue_token(
     )
 
     logger.debug(
-        "Creating JWT for user_id=%s with token_id=%s",
+        "Created JWT token for user_id=%s (token identifier claim jti=%s)",
         payload.get("sub"),
         token_id,
     )
