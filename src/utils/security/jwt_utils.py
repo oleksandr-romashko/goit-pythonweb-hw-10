@@ -126,27 +126,46 @@ def decode_token(
     """
     Decode and validate a JWT token.
 
+    This function performs full JWT validation, including signature verification,
+    optional audience checking, expiration and "not before" checks, and an
+    optional check of the custom `token_type` claim.
+
     Args:
-        token (str): Encoded JWT string.
-        secret_key (str): Secret key used for decoding.
-        algorithms (list[str]): Allowed signing algorithm(s).
-        audience (str | None): Expected audience value to validate ('aud' claim).
-        token_type (str | None): Expected token type check. Skipped if None.
-        verify_nbf (bool): Whether to verify token activation time (`nbf` (not before) claim).
-        verify_exp (bool): Whether to verify token expiration (`exp` (expiration) claim).
+        token (str):
+            The encoded JWT string.
+        secret_key (str):
+            Secret key used to verify the token signature.
+        algorithms (list[str]):
+            A list of allowed signing algorithms (e.g., ["HS256"]).
+        audience (str | None):
+            Expected `aud` claim. If provided, audience validation is enabled.
+            If `None`, the audience check is skipped.
+        token_type (str | None):
+            Expected custom `token_type` claim value.
+            If provided, the decoded token must contain a matching `token_type`.
+            If `None`, this validation is skipped.
+        verify_nbf (bool):
+            Whether to validate the `nbf` ("not before") claim.
+        verify_exp (bool):
+            Whether to validate the `exp` (expiration) claim.
 
     Returns:
-        dict[str, Any]: Decoded payload with standard and custom claims.
+        dict[str, Any]:
+            The decoded JWT payload containing standard and custom claims.
 
     Raises:
-        ExpiredTokenError: If the token has expired (`exp` (expiration) claim)
-                           or not active yet (`nbf` (not before) claim).
-        InvalidTokenError: If the token signature or structure is invalid.
+        ExpiredTokenError:
+            If the token is expired (`exp`) or not yet valid (`nbf`).
+        MalformedTokenError:
+            If the token is invalid, the signature is incorrect,
+            required claims are missing or malformed,
+            or the `token_type` does not match the expected value.
 
     Notes:
-        - Automatically validates standard claims (`aud` (audience) if set, `exp` (expiration),
-          `nbf` (not before),
-           `iat` (issued at)).
+        - Signature verification is always enabled.
+        - Audience validation is enabled only if `audience` is provided.
+        - Standard JWT claims (`exp`, `nbf`, `iat`) are validated according
+          to the provided flags.
     """
     try:
         payload: Dict[str, Any] = jwt.decode(
