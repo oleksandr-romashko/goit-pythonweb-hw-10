@@ -180,6 +180,8 @@ def decode_token(
                 "verify_signature": True,
             },
         )
+        if "jti" not in payload:
+            raise MalformedTokenError("Missing 'jti' claim in token payload.")
         if token_type:
             actual_token_type = payload.get("token_type")
             if actual_token_type != token_type:
