@@ -2,7 +2,7 @@
 
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Integer, String, Boolean
+from sqlalchemy import Index, Integer, String, Boolean, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -35,6 +35,8 @@ class User(TimestampMixin, Base):
     )
 
     contacts: Mapped[List["Contact"]] = relationship(back_populates="user")
+
+    __table_args__ = (Index("idx_users_email_lower", func.lower(email), unique=True),)
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, username={self.username!r})"

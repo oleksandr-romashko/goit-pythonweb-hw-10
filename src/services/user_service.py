@@ -791,10 +791,13 @@ class UserService:
         # Resolve default avatar
         avatar_url = self.avatar_provider.resolve_default_avatar_or_none(email)
 
+        # Normalize email
+        normalized_email = email.strip().lower()
+
         # Create new user data
         new_user_data = {
             "username": username,
-            "email": email,
+            "email": normalized_email,
             "hashed_password": hashed_password,
             "avatar": avatar_url,
             "is_active": is_active,

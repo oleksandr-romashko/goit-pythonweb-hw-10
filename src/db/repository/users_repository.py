@@ -162,8 +162,8 @@ class UsersRepository:
         return user.scalar_one_or_none()
 
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Return a single user by email, or None if not found."""
-        stmt = select(User).where(User.email == email)
+        """Return a single user by email (case insensitive), or None if not found."""
+        stmt = select(User).where(func.lower(User.email) == email.lower())
         user = await self.db.execute(stmt)
         return user.scalar_one_or_none()
 
