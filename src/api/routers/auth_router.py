@@ -169,7 +169,7 @@ async def resend_verification_email(
             "Can't resend verification email for user whose email is already verified: %s",
             user,
         )
-        return {"details": MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED}
+        raise_http_400_error(MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED)
 
     _send_verification_email(
         user, str(request.base_url), auth_service, mail_service, background_tasks
