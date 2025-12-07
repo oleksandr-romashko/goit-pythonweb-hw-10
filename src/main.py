@@ -35,6 +35,7 @@ from src.utils.logger import logger
 
 # TODO: Add feature - blacklist (cached)
 # TODO: Add feature - whitelist set in .env for trusted resources omitting additional checks
+# TODO: Clean up User account that was not confirmed within X hours/days
 
 
 @asynccontextmanager
