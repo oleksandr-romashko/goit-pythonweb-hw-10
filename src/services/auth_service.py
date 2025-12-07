@@ -255,7 +255,7 @@ class AuthService:
             )
 
         logger.debug(
-            "Decoded and validated %s for user with user_id=%d (jti=%s).",
+            "Decoded and validated %s for user with user_id=%s (jti=%s).",
             token_type.value,
             payload.get("sub", "unknown"),
             payload.get("jti", "unknown"),
@@ -335,7 +335,7 @@ class AuthService:
             raise InvalidTokenError("Token has no email ('email') claim")
 
         logger.debug(
-            "Decoded and validated %s for user with user_id=%d (jti=%s).",
+            "Decoded and validated %s for user with user_id=%s (jti=%s).",
             token_type.value,
             payload.get("sub", "unknown"),
             payload.get("jti", "unknown"),

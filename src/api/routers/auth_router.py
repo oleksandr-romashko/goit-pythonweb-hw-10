@@ -408,7 +408,7 @@ async def _authenticate_and_issue_token(
 
     logger.debug(
         (
-            "User(id=%d, username=%s, role=%s, is_active=%s) "
+            "User(id=%s, username=%s, role=%s, is_active=%s) "
             "authenticated successfully, issued with access and refresh tokens."
         ),
         user.id,
