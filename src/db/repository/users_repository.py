@@ -157,7 +157,7 @@ class UsersRepository:
 
     async def get_user_by_username(self, username: str) -> Optional[User]:
         """Return a single user by username, or None if not found."""
-        stmt = select(User).where(User.username == username)
+        stmt = select(User).where(func.lower(User.username) == username.lower())
         user = await self.db.execute(stmt)
         return user.scalar_one_or_none()
 

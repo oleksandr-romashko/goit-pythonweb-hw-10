@@ -36,7 +36,10 @@ class User(TimestampMixin, Base):
 
     contacts: Mapped[List["Contact"]] = relationship(back_populates="user")
 
-    __table_args__ = (Index("idx_users_email_lower", func.lower(email), unique=True),)
+    __table_args__ = (
+        Index("idx_users_username_lower", func.lower(username), unique=True),
+        Index("idx_users_email_lower", func.lower(email), unique=True),
+    )
 
     def __repr__(self) -> str:
         return f"User(id={self.id!r}, username={self.username!r})"
