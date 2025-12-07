@@ -368,6 +368,7 @@ def _send_verification_email(
 
     background_tasks.add_task(
         mail_service.send_registration_welcome_email,
+        user.id,
         user.email,
         user.username,
         base_url,

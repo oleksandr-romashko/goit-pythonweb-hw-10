@@ -16,7 +16,12 @@ class MailService:
         self.mail_provider = mail_provider
 
     async def send_registration_welcome_email(
-        self, email: str, username: str, host: str, verification_token: str
+        self,
+        user_id: int,
+        email: str,
+        username: str,
+        host: str,
+        verification_token: str,
     ) -> None:
         """Send a welcome email to a newly registered user."""
         logo_url = f"{host}static/images/logo.svg"
@@ -40,14 +45,13 @@ class MailService:
                 template_name="registration_welcome_email.html",
             )
             logger.info(
-                "Sent registration welcome email to user with username=%s", username
+                "Sent registration welcome email to user with user_id=%s", user_id
             )
         except Exception as exc:  # pylint: disable=broad-except
             logger.error(
-                "Failed to send registration welcome email to %s (username=%s): %s",
-                email,
-                username,
-                exc,
+                "Failed to send registration welcome email for user with user_id=%s: %s",
+                user_id,
+                str(exc),
             )
             return
 
