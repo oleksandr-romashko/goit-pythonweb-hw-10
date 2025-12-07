@@ -2,7 +2,6 @@
 
 from typing import Callable
 
-from jose import JWTError  # type: ignore[import]
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -43,7 +42,8 @@ class UserContextMiddleware(BaseHTTPMiddleware):
                     token_type=None,
                 )
                 request.state.user_id = payload.get("sub")
-            except JWTError:
+            except (jwt_utils.ExpiredTokenError, jwt_utils.MalformedTokenError):
+                # Just skip adding user_id and continue processing th request
                 pass
 
         return await call_next(request)
