@@ -20,7 +20,6 @@ from fastapi.security import OAuth2PasswordRequestForm
 from starlette.status import HTTP_302_FOUND
 
 from src.config import app_config
-from src.db.models import User
 from src.db.models.enums import UserRole
 from src.services import AuthService, UserService, ContactService, MailService
 from src.services.dtos import UserDTO
@@ -106,6 +105,7 @@ async def register_user(
 ) -> UserRegisteredResponseSchema:
     """Create a new user."""
 
+    # TODO: Add check for names, that are similar to reserved usernames (e.g. "admin1", "super_admin", etc.)
     # Check for restricted reserved user names
     if body.username.lower() in app_config.effective_reserved_usernames:
         raise_http_409_error(MESSAGE_ERROR_USERNAME_IS_RESERVED)
