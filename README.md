@@ -8,7 +8,7 @@
 
 ## Building a REST API for Contact Management using FastAPI. <!-- omit in toc -->
 
-This project demonstrates the use of **FastAPI** to build a REST API for managing personal contacts, along with **SQLAlchemy ORM** for relational **PostgreSQL** database operations, and **Alembic** for schema migrations.
+This project demonstrates the use of **FastAPI** to build a REST API for managing personal contacts, along with **SQLAlchemy ORM** for relational **PostgreSQL** database operations, **Alembic** for schema migrations, and other technologies.
 
 <p align="center">
   <img src="./asserts/project-showcase.jpg" alt="Project showcase image" width="600">
@@ -38,6 +38,8 @@ Main features:
     - [Prerequisites](#prerequisites)
     - [Setting Up the Development Environment](#setting-up-the-development-environment)
       - [1. Clone the Repository and Install Dependencies](#1-clone-the-repository-and-install-dependencies)
+      - [2. Setup application environment variables](#2-setup-application-environment-variables)
+      - [3. Build and run](#3-build-and-run)
       - [2. Setup database](#2-setup-database)
       - [3. Use Docker to setup environment](#3-use-docker-to-setup-environment)
       - [3. Setup application connection to the database](#3-setup-application-connection-to-the-database)
@@ -111,6 +113,8 @@ Before you begin, make sure you have the following installed:
 * **[Python 3.12.*](https://www.python.org/downloads/)** (tested with Python 3.12.3) — Required to run the application locally.
 * **[Poetry](https://python-poetry.org/)** - To manage dependencies in virtual environment.
 * **[Docker](https://www.docker.com/)** using PostgreSQL (tested with PostgreSQL 17.5) — Used to containerize the application in a unified environment using Docker or Docker Compose.
+* Email that allows you to send messages using API calls (meta.ua was used and test for this build as a practical example, but it may be other as meta.ua refires ukrainian mobile phone number)
+* Registered account at [cloudinary](https://cloudinary.com/) and its API keys.
 * Optional - for local development:
   * **[Git](https://git-scm.com/downloads)** — To clone the repository, version control and development.
   * **[VS Code](https://code.visualstudio.com/download)** or another IDE — Recommended for browsing and editing the project source code, run using run scripts and overall development.
@@ -122,14 +126,71 @@ Before you begin, make sure you have the following installed:
 
 1. Clone repository:
     ```bash
-    git clone https://github.com/oleksandr-romashko/goit-pythonweb-hw-08
-    cd goit-pythonweb-hw-08
+    git clone https://github.com/oleksandr-romashko/goit-pythonweb-hw-10.git
+    cd goit-pythonweb-hw-10
     ```
-    or download the ZIP archive from [GitHub Repository](https://github.com/oleksandr-romashko/goit-pythonweb-hw-08) and extract it.
+    or download the ZIP archive from [GitHub Repository](https://github.com/oleksandr-romashko/goit-pythonweb-hw-10/) and extract it.
 2. Install project dependencies:
     ```bash
     poetry install
     ```
+
+
+##### 2. Setup application environment variables
+
+The application requires several environment variables to operate correctly.
+
+**Production environment**
+
+In production, environment variables and secrets must be provided externally (e.g., GitHub Actions, Docker environment variables, deployment platform, etc.).
+The application in production ***does not load `.env` files***.
+
+**Development environment**
+
+For local development, copy `.env.example` → `.env`.
+
+This file contains all required configuration values.
+Some variables have mandatory validation (mostly security-related).  
+If left with their default placeholder values, the application will refuse to start.
+
+These mandatory variables include:
+```
+    "AUTH_JWT_SECRET"
+    "CACHE_PASSWORD"
+    "DB_ADMIN_USER"
+    "DB_ADMIN_USER_PASSWORD"
+    "DB_APP_USER_PASSWORD"
+    "DB_ADMIN_PANEL_PASSWORD"
+    "MAIL_JWT_SECRET"
+    "MAIL_USERNAME"
+    "MAIL_PASSWORD"
+    "CLOUDINARY_NAME"
+    "CLOUDINARY_API_KEY"
+    "CLOUDINARY_API_SECRET"
+```
+
+When such variables contain invalid/default values, the application will print detailed log messages describing which variable must be fixed. Check the `api` service container logs for guidance.
+
+##### 3. Build and run
+
+Our app solution uses Docker to run our app and other necessary services in a Docker compose environment. That includes:
+* Our FastApi api application
+* Redis cache service
+* Postgres database
+* PgAdmin to access database
+
+We may use `makefile` to build and run our environment in Docker.
+* For the production setup run thi command while in the project root directory:
+  `make prod`
+* or for the development setup run other command:
+  `make dev`
+  Dev environment allows additional features:
+    * auto-reload of the app upon code changes while develop
+    * extra details on errors as part of response and `debug` error logging level
+    * extra http header with processing time of the request handling
+    * CORS allows all origins
+    * database and cache ports are exposed and accessible from outside of compose environment
+    * Compose run not in daemon mode
 
 ##### 2. Setup database
 
@@ -153,6 +214,7 @@ where:
 - `contacts_app` - database name to connect to
 - `5432:5432` - exposed external/internal container ports to access postgres database from the outside
 - `postgres` - Docker image name to base our container on (we use PostgreSQL, so `postgres` in our case)
+
 
 ##### 3. Use Docker to setup environment
 
