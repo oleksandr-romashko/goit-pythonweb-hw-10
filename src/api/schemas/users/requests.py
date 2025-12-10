@@ -74,11 +74,13 @@ class UserLoginRequestSchema(BaseModel):
 class UserUpdatePasswordRequestSchema(BaseModel):
     """Schema for updating user password."""
 
-    current_password: str = PasswordField(
-        description="Current password to validate", example="StrongPass1!"
+    current_password: Optional[str] = PasswordField(
+        optional=True,
+        description="Current password to validate",
+        example="StrongPass1!",
     )
-    password: str = PasswordField(
-        description="New password to set", example="NewStrongPass1!"
+    password: Optional[str] = PasswordField(
+        optional=True, description="New password to set", example="NewStrongPass1!"
     )
 
     class Config:

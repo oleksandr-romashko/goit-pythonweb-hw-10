@@ -112,6 +112,16 @@ async def update_user_password(
     current_password = body.current_password
     new_password = body.password
 
+    if current_password is None or new_password is None:
+        errors = {}
+        if current_password is None:
+            errors["current_password"] = "This field is required."
+        if new_password is None:
+            errors["password"] = "This field is required."
+        raise_http_400_error(
+            detail={"errors": errors, "message": "Invalid request data."}
+        )
+
     try:
         updated_user_dto: Optional[UserWithStatsDTO] = (
             await user_service.update_user_password(
