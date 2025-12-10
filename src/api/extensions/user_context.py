@@ -38,8 +38,8 @@ class UserContextMiddleware(BaseHTTPMiddleware):
                     algorithms=[app_config.AUTH_JWT_ALGORITHM],
                     verify_exp=False,
                     verify_nbf=False,
-                    audience=None,
-                    token_type=None,
+                    expected_audience=None,
+                    expected_token_type=None,
                 )
                 request.state.user_id = payload.get("sub")
             except (jwt_utils.ExpiredTokenError, jwt_utils.MalformedTokenError):

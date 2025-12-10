@@ -85,7 +85,7 @@ def issue_token(
         payload["sub"] = str(subject)
     if issuer is not None:
         payload["iss"] = issuer
-    if audience:  # not None or empty list
+    if audience:
         payload["aud"] = audience
     if not_before is not None:
         payload["nbf"] = int(not_before.timestamp())
@@ -118,80 +118,107 @@ def decode_token(
     token: str,
     secret_key: str,
     algorithms: List[str],
-    audience: Optional[str] = None,
-    token_type: Optional[str] = None,
+    expected_audience: Optional[str] = None,
+    expected_token_type: Optional[str] = None,
+    expected_issuer: Optional[str] = None,
     verify_nbf: bool = True,
     verify_exp: bool = True,
 ) -> Dict[str, Any]:
     """
     Decode and validate a JWT token.
 
-    This function performs full JWT validation, including signature verification,
-    optional audience checking, expiration and "not before" checks, and an
-    optional check of the custom `token_type` claim.
+    Performs full JWT validation: signature verification, optional audience check,
+    expiration (`exp`) and activation time (`nbf`) validation, and an optional
+    check of the custom `token_type` claim.
 
     Args:
         token (str):
-            The encoded JWT string.
+            Encoded JWT string.
         secret_key (str):
-            Secret key used to verify the token signature.
+            Secret key used for verifying the signature.
         algorithms (list[str]):
-            A list of allowed signing algorithms (e.g., ["HS256"]).
-        audience (str | None):
+            Allowed JWT signing algorithms (e.g. ["HS256"]).
+        expected_audience (str | None):
             Expected `aud` claim. If provided, audience validation is enabled.
-            If `None`, the audience check is skipped.
-        token_type (str | None):
-            Expected custom `token_type` claim value.
-            If provided, the decoded token must contain a matching `token_type`.
-            If `None`, this validation is skipped.
+        expected_token_type (str | None):
+            Expected value of the `token_type` claim. If provided, the decoded
+            payload must contain a matching value.
+        expected_issuer (str | None):
+            Expected `iss` claim.
         verify_nbf (bool):
-            Whether to validate the `nbf` ("not before") claim.
+            Validate the `nbf` ("not before") claim if present.
         verify_exp (bool):
-            Whether to validate the `exp` (expiration) claim.
+            Validate the `exp` (expiration) claim.
 
     Returns:
-        dict[str, Any]:
-            The decoded JWT payload containing standard and custom claims.
+        dict[str, Any]: The decoded JWT payload.
 
     Raises:
         ExpiredTokenError:
-            If the token is expired (`exp`) or not yet valid (`nbf`).
+            If the token is expired or not yet valid.
         MalformedTokenError:
-            If the token is invalid, the signature is incorrect,
-            required claims are missing or malformed,
-            or the `token_type` does not match the expected value.
+            If the token is invalid, has an incorrect signature, missing or
+            malformed standard claims, or does not match the expected
+            `token_type`.
 
     Notes:
         - Signature verification is always enabled.
-        - Audience validation is enabled only if `audience` is provided.
-        - Standard JWT claims (`exp`, `nbf`, `iat`) are validated according
-          to the provided flags.
+        - Audience validation is performed only if `audience` is provided.
+        - Standard JWT claims (`exp`, `nbf`, `iat`) are validated according to flags.
+        - All issued tokens include a `jti` claim; if missing, the token is
+          considered malformed.
     """
     try:
         payload: Dict[str, Any] = jwt.decode(
             token=token,
             key=secret_key,
             algorithms=algorithms,
-            audience=audience,
+            audience=expected_audience,
             options={
-                "verify_aud": audience is not None,
+                "verify_aud": expected_audience is not None,
+                "verify_iss": expected_issuer is not None,
                 "verify_nbf": verify_nbf,
                 "verify_exp": verify_exp,
                 "verify_signature": True,
             },
         )
-        if "jti" not in payload:
-            raise MalformedTokenError("Missing 'jti' claim in token payload.")
-        if token_type:
-            actual_token_type = payload.get("token_type")
-            if actual_token_type != token_type:
-                raise MalformedTokenError(
-                    f"Invalid token type: expected '{token_type}', got '{actual_token_type}'"
-                )
-        return payload
     except ExpiredSignatureError as exc:
         logger.debug("JWT decode failed: token expired.")
         raise ExpiredTokenError("The token has expired.") from exc
     except JWTError as exc:
         logger.debug("JWT decode failed: invalid token or signature.")
         raise MalformedTokenError("Invalid token or signature.") from exc
+
+    if "jti" not in payload:
+        raise MalformedTokenError("Missing 'jti' claim in token payload.")
+
+    if expected_audience is not None and "aud" not in payload:
+        # Even if acc. to RFC 7519 (JWT) 'aud' claim is OPTIONAL,
+        # force its presence if expected_audience is not None
+        token_description = (
+            f"{expected_token_type} token" if expected_token_type else "token"
+        )
+        raise MalformedTokenError(
+            (
+                f"Missing 'aud' claim in {token_description} payload "
+                f"(required aud={expected_audience})."
+            )
+        )
+
+    if expected_token_type:
+        actual_token_type = payload.get("token_type")
+        if actual_token_type != expected_token_type:
+            raise MalformedTokenError(
+                f"Invalid token type: expected '{expected_token_type}', got '{actual_token_type}'"
+            )
+
+    if expected_issuer:
+        # Even if acc. to RFC 7519 (JWT) 'iss' claim is OPTIONAL,
+        # force its presence if expected_issuer is not None
+        actual_issuer = payload.get("iss")
+        if actual_issuer != expected_issuer:
+            raise MalformedTokenError(
+                f"Invalid token issuer: expected '{expected_issuer}', got '{actual_issuer}'"
+            )
+
+    return payload

@@ -227,8 +227,8 @@ class AuthService:
                 token=token,
                 secret_key=self.access_secret,
                 algorithms=[self.alg],
-                audience=TokenAudience.API.value,
-                token_type=token_type.value,
+                expected_audience=TokenAudience.API.value,
+                expected_token_type=token_type.value,
             )
         except MalformedTokenError as exc:
             logger.debug("Token is malformed and invalid: %s", str(exc))
@@ -299,8 +299,8 @@ class AuthService:
                 token=token,
                 secret_key=self.email_secret,
                 algorithms=[self.alg],
-                audience=TokenAudience.EMAIL.value,
-                token_type=token_type.value,
+                expected_audience=TokenAudience.EMAIL.value,
+                expected_token_type=token_type.value,
             )
         except MalformedTokenError as exc:
             logger.debug("Token is malformed and invalid: %s", str(exc))
