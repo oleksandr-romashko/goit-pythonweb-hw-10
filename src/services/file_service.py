@@ -42,7 +42,7 @@ class FileService:
             return await self.cloud_provider.upload_avatar(file, user)
         except CloudProviderAvatarUploadError as exc:
             raise FileUploadFailedError(
-                f"Failed to upload new avatar for user_id={user.id}"
+                f"Failed to upload new avatar for user_id={user.id}: {exc}"
             ) from exc
 
     def reset_avatar(self, user: UserDTO) -> Optional[str]:

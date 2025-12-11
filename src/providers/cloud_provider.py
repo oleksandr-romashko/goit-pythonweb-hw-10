@@ -139,7 +139,9 @@ class CloudinaryCloudProvider(CloudProvider):
                 },
             )
         except CloudProviderUploadError as exc:
-            logger.debug("Failed to upload avatar for user_id=%s: %s", user.id, exc)
+            logger.debug(
+                "Failed to upload avatar for user_id=%s: %s", user.id, repr(exc)
+            )
             raise CloudProviderAvatarUploadError from exc
 
         # Get the Cloudinary full public_id including folder

@@ -172,14 +172,14 @@ async def update_user_avatar(
     try:
         upload_result = await file_service.upload_avatar(file.file, user)
     except FileUploadFailedError as exc:
-        logger.error(
-            "Couldn't upload avatar file %s (%s Bytes) to cloud for %s: %s",
+        logger.warning(
+            "Invalid avatar upload attempt for file %s (%s Bytes) for %s: %s",
             file.filename,
             file.size,
             user,
-            str(exc),
+            exc,
         )
-        raise_http_500_error("Problems with avatar uploading")
+        raise_http_400_error("Invalid avatar file. Only JPG, PNG, WEBP are allowed.")
 
     new_avatar_url = upload_result["url"]
 
