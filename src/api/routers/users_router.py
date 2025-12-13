@@ -11,12 +11,11 @@ from src.services.dtos import UserDTO
 from src.services.errors import (
     UserConflictError,
     EmailChangeNotAllowedError,
-    UserRoleIsInvalidError,
+    BadProvidedDataError,
     UserRolePermissionError,
     UserViewPermissionError,
 )
 from src.utils.constants import (
-    MESSAGE_ERROR_USER_ROLE_IS_INVALID,
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
     MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN,
@@ -83,6 +82,7 @@ async def create_user_by_admin(
     body: UserAdminCreateRequestSchema,
     user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
+    contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
     Create a new user by an admin or superadmin.
@@ -99,8 +99,8 @@ async def create_user_by_admin(
             role_str=body.role,
             is_active=body.is_active or True,
         )
-    except UserRoleIsInvalidError:
-        raise_http_400_error(MESSAGE_ERROR_USER_ROLE_IS_INVALID)
+    except BadProvidedDataError as exc:
+        raise_http_400_error(detail=exc.errors)
     except UserRolePermissionError as exc:
         raise_http_403_error(
             f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"
@@ -108,7 +108,12 @@ async def create_user_by_admin(
     except UserConflictError as exc:
         raise_http_409_error(detail=exc.errors)
 
-    return UserAdminRegisteredUserResponseSchema.model_validate(new_user)
+    response_data = UserAdminRegisteredUserResponseSchema.model_validate(new_user)
+
+    # Add contacts count (probably zero for a newly created user)
+    response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
+
+    return response_data
 
 
 @router.get(

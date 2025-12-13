@@ -185,7 +185,11 @@ class UserService:
         """Create a new user by an admin or superadmin."""
 
         # Provided role check
-        role = UserService._validate_role_exists(role_str)
+        # Check if role exists and valid
+        try:
+            role = UserService._validate_role_exists(role_str)
+        except UserRoleIsInvalidError as exc:
+            raise BadProvidedDataError({"role": f"Invalid role: {role_str}"}) from exc
 
         # Role restriction logic check
         self._validate_creation_permissions(creator, role, username, email)
@@ -814,7 +818,7 @@ class UserService:
         new_user = await self.repo.create_user(new_user_data)
 
         creator_role = (
-            f"{creator.role.value.upper()} "
+            f"{creator.role.upper()} "
             if creator and isinstance(creator, UserDTO)
             else ""
         )
