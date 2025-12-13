@@ -1,6 +1,7 @@
 """DTO module representing user"""
 
 from dataclasses import dataclass, asdict
+from datetime import datetime
 from typing import Optional, Self
 
 from src.db.models import User
@@ -19,6 +20,8 @@ class UserDTO:
     is_active: bool
     is_email_confirmed: bool
     avatar: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     def __str__(self) -> str:
         return (
@@ -41,6 +44,8 @@ class UserDTO:
             is_active=user.is_active,
             is_email_confirmed=user.is_email_confirmed,
             avatar=getattr(user, "avatar", None),
+            created_at=user.created_at,
+            updated_at=user.updated_at,
         )
 
     @classmethod
@@ -55,6 +60,8 @@ class UserDTO:
             is_active=data["is_active"],
             is_email_confirmed=data["is_email_confirmed"],
             avatar=data.get("avatar"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
         )
 
     def to_dict(self) -> dict:
