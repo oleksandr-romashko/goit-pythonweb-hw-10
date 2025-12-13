@@ -33,9 +33,11 @@ from src.config import app_config
 from src.utils.logger import logger
 
 
+# TODO: Create possibility to invalidate access tokens (e.g. on password change)
+# TODO: Add superadmin app management endpoints to disable registration, sending emails, serving web, cache, etc.
 # TODO: Add feature - blacklist (cached)
 # TODO: Add feature - whitelist set in .env for trusted resources omitting additional checks
-# TODO: Clean up User account that was not confirmed within X hours/days
+# TODO: Clean up User account that was not confirmed (email confirmation) within X hours/days
 
 
 @asynccontextmanager
