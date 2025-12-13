@@ -5,7 +5,6 @@ import os
 import sys
 
 from src.db import session_manager
-from src.providers.cache_provider.connection import get_redis
 from src.services import UserService
 from src.services.errors import (
     BadProvidedDataError,
