@@ -11,6 +11,8 @@ from .errors import GravatarResolveError
 class GravatarProvider:
     """Handles external Gravatar avatars service."""
 
+    GRAVATAR_BASE_URL = "https://www.gravatar.com/avatar/"
+
     # TODO: Evaluate fallback to avatar served from server static folder
     # May occur when failed to resolve Gravatar -> return None and such case
     # should be solved by frontend. However we may send default avatar image
@@ -35,3 +37,10 @@ class GravatarProvider:
             raise GravatarResolveError(
                 f"Failed to fetch Gravatar for email={email}"
             ) from exc
+
+    @staticmethod
+    def is_gravatar_avatar(url: Optional[str]) -> bool:
+        """Check if the given URL is a Gravatar URL."""
+        if not url:
+            return False
+        return url.startswith(GravatarProvider.GRAVATAR_BASE_URL)

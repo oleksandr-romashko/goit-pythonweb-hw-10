@@ -9,6 +9,7 @@ from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.providers.avatar_provider import GravatarProvider
 from src.providers.cache_provider.user_cache import UserRedisCacheProvider
+from src.providers.errors import GravatarResolveError
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
@@ -95,7 +96,7 @@ class UserService:
             logger.warning(
                 "User failed to pass old password validation (possible stolen token)"
             )
-            raise InvalidUserCredentialsError("Incorrect old password")
+            raise InvalidUserCredentialsError("Incorrect current password")
 
     @staticmethod
     def _validate_role_exists(role: Optional[Union[str, UserRole]]) -> UserRole:
@@ -372,8 +373,8 @@ class UserService:
         if not updated_user:
             return None
         logger.debug(
-            "User %s changed avatar: %s -> %s",
-            target_user.id,
+            "%s changed avatar: %s -> %s",
+            target_user,
             target_user.avatar,
             normalized,
         )
@@ -789,7 +790,13 @@ class UserService:
         hashed_password = get_password_hash(password)
 
         # Resolve default avatar
-        avatar_url = self.avatar_provider.resolve_default_avatar_or_none(email)
+        try:
+            avatar_url = self.avatar_provider.resolve_default_avatar_or_none(email)
+        except GravatarResolveError as exc:
+            # best-effort:
+            # Log and return None - indicates failed resolution, but still as valid domain value
+            logger.debug("Failed to fetch Gravatar for email=%s: %s", email, exc)
+            avatar_url = None
 
         # Normalize email
         normalized_email = email.strip().lower()

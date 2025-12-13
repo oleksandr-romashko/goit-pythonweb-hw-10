@@ -2,17 +2,38 @@
 Shared constants for error messages and other reusable values.
 """
 
-# Auth
+# ==============
+# Regex patterns
+# ==============
+
 AUTH_PASSWORD_SPECIAL_CHARS = "!@#$%^&*()_+-=[]{};':\"\\|,.<>/?"
 
+# ==============
 # Success messages
+# ==============
+
 MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT = (
     "Please check your email for the confirmation letter"
 )
 MESSAGE_SUCCESS_EMAIL_VERIFIED = "Email verified successfully"
 MESSAGE_SUCCESS_PASSWORD_UPDATED = "Password updated successfully"
 
+# ==============
 # Error messages
+# ==============
+
+# Template error messages
+
+MESSAGE_ERROR_UNSUPPORTED_X_ERROR_TEMPLATE = (
+    "Unsupported {subject}: {provided}. Allowed {subject}: {supported}."
+)
+MESSAGE_ERROR_FILE_TOO_LARGE_ERROR_TEMPLATE = (
+    "File is too large: {size} bytes. Maximum allowed is {max_allowed_size} bytes."
+)
+MESSAGE_ERROR_FAILED_TO_UPLOAD_FILE_ERROR_TEMPLATE = "Failed to upload {file_type}"
+
+# Static error messages
+
 MESSAGE_ERROR_DB_CONNECTION_ERROR = "Error connecting to the database"
 MESSAGE_ERROR_DB_INVALID_CONFIG = "Database is not configured correctly"
 
@@ -37,6 +58,8 @@ MESSAGE_ERROR_BAD_REQUEST_EMPTY = "Request can't be empty"
 MESSAGE_ERROR_BAD_REQUEST_NO_TOKEN = "Bad request: Missing token parameter"
 MESSAGE_ERROR_NOT_FOUND = "Not found"
 MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS = "Resource already exists"
+MESSAGE_ERROR_PAYLOAD_TOO_LARGE = "Payload Too Large"
+MESSAGE_ERROR_UNSUPPORTED_MEDIA_TYPE = "Unsupported Media Type"
 MESSAGE_ERROR_TOO_MANY_REQUESTS = "Too Many Requests"
 MESSAGE_ERROR_INTERNAL_SERVER_ERROR = "Internal server error"
 MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED = "Not implemented yet"
@@ -59,10 +82,13 @@ MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED = (
     "User does not exist or you are not allowed to perform this action with this user"
 )
 
+MESSAGE_ERROR_EMPTY_UPLOAD_FILE = "Uploaded file is empty"
 MESSAGE_ERROR_CLOUD_UPLOAD_ERROR = "Failed to upload file to the cloud"
 MESSAGE_ERROR_CLOUD_DELETE_ERROR = "Failed to delete file in the cloud"
 
+# ==============
 # Default ENV variables values
+# ==============
 
 DEFAULT_AUTH_JWT_SECRET = "your_auth_jwt_secret_here"
 DEFAULT_CACHE_PASSWORD = "your_cache_password_here"

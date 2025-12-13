@@ -12,6 +12,8 @@ from src.utils.constants import (
     MESSAGE_ERROR_FORBIDDEN,
     MESSAGE_ERROR_NOT_FOUND,
     MESSAGE_ERROR_RESOURCE_ALREADY_EXISTS,
+    MESSAGE_ERROR_PAYLOAD_TOO_LARGE,
+    MESSAGE_ERROR_UNSUPPORTED_MEDIA_TYPE,
     MESSAGE_ERROR_INTERNAL_SERVER_ERROR,
     MESSAGE_ERROR_SERVER_ERROR_NOT_IMPLEMENTED,
 )
@@ -54,6 +56,24 @@ def raise_http_409_error(
 ) -> NoReturn:
     """Raise a 409 Conflict error with a consistent payload."""
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail or message)
+
+
+def raise_http_413_error(
+    message: str = MESSAGE_ERROR_PAYLOAD_TOO_LARGE, detail: Optional[Dict] = None
+) -> NoReturn:
+    """Raise a 413 Payload Too Large error with a consistent payload."""
+    raise HTTPException(
+        status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=detail or message
+    )
+
+
+def raise_http_415_error(
+    message: str = MESSAGE_ERROR_UNSUPPORTED_MEDIA_TYPE, detail: Optional[Dict] = None
+) -> NoReturn:
+    """Raise a 415 Unsupported Media Type error with a consistent payload."""
+    raise HTTPException(
+        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=detail or message
+    )
 
 
 def raise_http_500_error(

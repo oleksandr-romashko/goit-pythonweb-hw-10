@@ -20,6 +20,12 @@ from src.services.errors import (
     BadProvidedDataError,
     FileUploadFailedError,
 )
+from src.services.validators.file_validator import (
+    EmptyFileValidationError,
+    TooLargeFileValidationError,
+    UnsupportedMimeTypeValidationError,
+    UnsupportedFileTypeValidationError,
+)
 from src.utils.logger import logger
 
 from src.api.dependencies import (
@@ -32,12 +38,14 @@ from src.api.errors import (
     raise_http_400_error,
     raise_http_401_error,
     raise_http_403_error,
-    raise_http_500_error,
+    raise_http_413_error,
+    raise_http_415_error,
 )
 from src.api.extensions.rate_limiter import get_rate_limit, RateLimit
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_ME_PASSWORD_UPDATE_BAD_REQUEST,
+    ON_AVATAR_UPLOAD_ERROR_RESPONSES,
 )
 from src.api.responses.success_responses import ON_ME_SUCCESS_RESPONSE
 from src.api.schemas.users.requests import UserUpdatePasswordRequestSchema
@@ -160,6 +168,7 @@ async def update_user_password(
     response_model=UserAvatarUpdateResponseSchema,
     status_code=status.HTTP_200_OK,
     response_description="Successfully updated user avatar.",
+    responses={**ON_AVATAR_UPLOAD_ERROR_RESPONSES},
 )
 async def update_user_avatar(
     file: UploadFile = File(),
@@ -170,21 +179,23 @@ async def update_user_avatar(
     """Upload or replace current user's avatar."""
     # 1. Upload avatar file to storage
     try:
-        upload_result = await file_service.upload_avatar(file.file, user)
+        upload_result = await file_service.upload_avatar(file, user)
+    except UnsupportedMimeTypeValidationError as exc:
+        raise_http_415_error(str(exc))
+    except UnsupportedFileTypeValidationError as exc:
+        raise_http_400_error(str(exc))
+    except EmptyFileValidationError as exc:
+        raise_http_400_error(str(exc))
+    except TooLargeFileValidationError as exc:
+        raise_http_413_error(str(exc))
     except FileUploadFailedError as exc:
-        logger.warning(
-            "Invalid avatar upload attempt for file %s (%s Bytes) for %s: %s",
-            file.filename,
-            file.size,
-            user,
-            exc,
-        )
-        raise_http_400_error("Invalid avatar file. Only JPG, PNG, WEBP are allowed.")
+        raise_http_400_error(str(exc))
 
     new_avatar_url = upload_result["url"]
 
-    # 2. Update DB
+    # 2. Update DB entry
     updated_user = await user_service.update_user_avatar(user, new_avatar_url)
+
     # Edge case - user deleted or became inaccessible during update
     if updated_user is None:
         logger.warning(
@@ -193,6 +204,7 @@ async def update_user_avatar(
         )
         raise_http_401_error()
 
+    # 3. Return new avatar URL
     return UserAvatarUpdateResponseSchema(avatar=new_avatar_url)
 
 
@@ -221,6 +233,13 @@ async def reset_user_avatar(
     # 1. Reset avatar value
     new_avatar_value = file_service.reset_avatar(user)
 
+    # No avatar change (idempotent operation)
+    if new_avatar_value == old_avatar_url:
+        logger.debug(
+            "%s requested avatar reset, but no change needed (avatar unchanged)", user
+        )
+        return UserAvatarUpdateResponseSchema(avatar=new_avatar_value)
+
     # 2. Update DB
     updated_user = await user_service.update_user_avatar(user, new_avatar_value)
     # Edge case: user deleted during operation
@@ -232,8 +251,10 @@ async def reset_user_avatar(
         raise_http_401_error()
 
     # 3. Remove old avatar in the background
-    if old_avatar_url:
-        background_tasks.add_task(file_service.delete_avatar, user)
+    if not old_avatar_url:
+        logger.debug("%s had no avatar to delete after avatar reset request", user)
+    else:
+        background_tasks.add_task(file_service.delete_avatar, user, old_avatar_url)
 
     return UserAvatarUpdateResponseSchema(avatar=new_avatar_value)
 

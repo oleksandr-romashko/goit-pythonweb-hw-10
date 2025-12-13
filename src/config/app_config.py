@@ -183,6 +183,10 @@ class Config:
 
     # === Avatar settings ===
 
+    AVATAR_ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp"}
+    AVATAR_ALLOWED_FILE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+    AVATAR_MAX_FILE_SIZE = 1 * 1024 * 1024  # 1MB
+
     AVATAR_IMAGE_SIZE: int = 250
     AVATAR_BASE_FOLDER = "contacts_manager_api/images/avatars"
 

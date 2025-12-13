@@ -7,8 +7,11 @@ This service coordinates avatar handling logic between:
 It exposes a clean API for use in FastAPI endpoints.
 """
 
-from typing import Optional, Union, BinaryIO
+from typing import Optional
 
+from fastapi import UploadFile
+
+from src.config import app_config
 from src.providers.avatar_provider import GravatarProvider
 from src.providers.cloud_provider import CloudProvider, AvatarUploadResult
 from src.providers.errors import (
@@ -16,10 +19,20 @@ from src.providers.errors import (
     CloudProviderAvatarDeletionError,
     GravatarResolveError,
 )
+from src.utils.constants import MESSAGE_ERROR_FAILED_TO_UPLOAD_FILE_ERROR_TEMPLATE
 from src.utils.logger import logger
 
 from .dtos import UserDTO
 from .errors import FileUploadFailedError
+from .validators.file_validator import (
+    validate_file_size,
+    validate_file_extension,
+    validate_file_mime_type,
+    EmptyFileValidationError,
+    TooLargeFileValidationError,
+    UnsupportedMimeTypeValidationError,
+    UnsupportedFileTypeValidationError,
+)
 
 
 class FileService:
@@ -35,14 +48,61 @@ class FileService:
         self.gravatar_provider = gravatar_provider
 
     async def upload_avatar(
-        self, file: Union[BinaryIO, bytes], user: UserDTO
+        self, file: UploadFile, user: UserDTO
     ) -> AvatarUploadResult:
-        """Upload new avatar to cloud storage and return upload metadata."""
+        """
+        Upload new avatar to cloud storage and return upload metadata.
+
+        Raises:
+            UnsupportedFileTypeValidationError:
+                - Raised when the file's MIME type or extension is not in the allowed types.
+                - Raised when the extension is not in the allowed file extension.
+            EmptyFileValidationError
+                Raised when the file is empty (zero size).
+            TooLargeFileValidationError:
+                Raised when the file is too large.
+
+        Do not raise:
+            TooSmallFileValidationError here - small files are allowed and no check is performed.
+        """
+        # Validate file before upload
         try:
-            return await self.cloud_provider.upload_avatar(file, user)
+            validate_file_mime_type(file, app_config.AVATAR_ALLOWED_MIME_TYPES)
+            validate_file_extension(file, app_config.AVATAR_ALLOWED_FILE_EXT)
+            validate_file_size(file, app_config.AVATAR_MAX_FILE_SIZE)
+        except UnsupportedMimeTypeValidationError as exc:
+            logger.debug(
+                "Avatar file MIME type is invalid (user_id=%s): %s", user.id, str(exc)
+            )
+            raise
+        except UnsupportedFileTypeValidationError as exc:
+            logger.debug(
+                "Avatar file type is invalid (user_id=%s): %s", user.id, str(exc)
+            )
+            raise
+        except EmptyFileValidationError as exc:
+            logger.debug("Avatar file is empty (user_id=%s): %s", user.id, str(exc))
+            raise
+
+        except TooLargeFileValidationError as exc:
+            logger.debug("Avatar file is too large (user_id=%s): %s", user.id, str(exc))
+            raise
+
+        # Upload file using provider
+        try:
+            return await self.cloud_provider.upload_avatar(file.file, user)
         except CloudProviderAvatarUploadError as exc:
+            logger.warning(
+                "Failed avatar upload attempt (filename: %s, size: %s bytes, user: %s): %s",
+                file.filename,
+                file.size,
+                user,
+                str(exc),
+            )
             raise FileUploadFailedError(
-                f"Failed to upload new avatar for user_id={user.id}: {exc}"
+                MESSAGE_ERROR_FAILED_TO_UPLOAD_FILE_ERROR_TEMPLATE.format(
+                    file_type="avatar"
+                )
             ) from exc
 
     def reset_avatar(self, user: UserDTO) -> Optional[str]:
@@ -55,12 +115,22 @@ class FileService:
             logger.debug("Failed to fetch Gravatar for email=%s: %s", user.email, exc)
             return None
 
-    async def delete_avatar(self, user: UserDTO) -> None:
+    async def delete_avatar(self, user: UserDTO, avatar_to_delete_url: str) -> None:
         """
         Remove user's avatar from cloud storage.
 
+        No deletion for Gravatar avatars as they are not cloud stored or managed.
+
         Best-effort --> Do not raise error, just log non-critical error
         """
+        if GravatarProvider.is_gravatar_avatar(avatar_to_delete_url):
+            # No deletion for Gravatar avatars
+            logger.debug(
+                "Gravatar avatar not managed by cloud detected, skipping deletion avatar for %s",
+                user,
+            )
+            return
+
         try:
             await self.cloud_provider.delete_avatar(user)
         except CloudProviderAvatarDeletionError as exc:

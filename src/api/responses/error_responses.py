@@ -10,8 +10,13 @@ from src.utils.constants import (
     MESSAGE_ERROR_USER_VIEW_IS_RESTRICTED,
     MESSAGE_ERROR_USER_DELETION_IS_RESTRICTED,
     MESSAGE_ERROR_FEATURE_IS_PLANNED,
+    MESSAGE_ERROR_UNSUPPORTED_X_ERROR_TEMPLATE,
+    MESSAGE_ERROR_FILE_TOO_LARGE_ERROR_TEMPLATE,
+    MESSAGE_ERROR_FAILED_TO_UPLOAD_FILE_ERROR_TEMPLATE,
+    MESSAGE_ERROR_EMPTY_UPLOAD_FILE,
 )
 
+from src.config import app_config
 from src.api.schemas.errors import (
     ImproperAuthTokenErrorResponse,
     InvalidTokenCredentialsErrorResponse,
@@ -242,6 +247,79 @@ ON_USER_REGISTER_CONFLICT_RESPONSE: Dict = {
             }
         },
     }
+}
+
+ON_AVATAR_UPLOAD_ERROR_RESPONSES: Dict = {
+    400: {
+        "description": "Bad Request: Invalid upload file.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "UnsupportedFileTypeValidationError": {
+                        "summary": "Unsupported file type provided",
+                        "value": {
+                            "details": MESSAGE_ERROR_UNSUPPORTED_X_ERROR_TEMPLATE.format(
+                                subject="avatar file type",
+                                provided="<PROVIDED FILE TYPE>",
+                                supported=", ".join(app_config.AVATAR_ALLOWED_FILE_EXT),
+                            )
+                        },
+                    },
+                    "EmptyFileValidationError": {
+                        "summary": "Empty avatar file (zero size) provided",
+                        "value": {"details": MESSAGE_ERROR_EMPTY_UPLOAD_FILE},
+                    },
+                    "FileUploadFailedError": {
+                        "summary": "Failed to upload avatar file",
+                        "value": {
+                            "details": MESSAGE_ERROR_FAILED_TO_UPLOAD_FILE_ERROR_TEMPLATE.format(
+                                file_type="avatar"
+                            )
+                        },
+                    },
+                }
+            }
+        },
+    },
+    413: {
+        "description": "Payload Too Large: Avatar file is too large.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "TooLargeFileValidationError": {
+                        "summary": "Avatar file is too large",
+                        "value": {
+                            "details": MESSAGE_ERROR_FILE_TOO_LARGE_ERROR_TEMPLATE.format(
+                                size="<PROVIDED FILE SIZE>",
+                                max_allowed_size=app_config.AVATAR_MAX_FILE_SIZE,
+                            )
+                        },
+                    },
+                }
+            }
+        },
+    },
+    415: {
+        "description": "Unsupported Media Type: Avatar file type is not supported.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "UnsupportedMimeTypeValidationError": {
+                        "summary": "Avatar MIME type is not supported",
+                        "value": {
+                            "details": MESSAGE_ERROR_UNSUPPORTED_X_ERROR_TEMPLATE.format(
+                                subject="avatar MIME type",
+                                provided="<PROVIDED MIME TYPE>",
+                                supported=", ".join(
+                                    app_config.AVATAR_ALLOWED_MIME_TYPES
+                                ),
+                            )
+                        },
+                    },
+                }
+            }
+        },
+    },
 }
 
 ON_INTERNAL_SERVER_ERROR_RESPONSE: Dict = {
