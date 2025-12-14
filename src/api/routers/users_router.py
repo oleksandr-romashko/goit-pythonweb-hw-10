@@ -97,7 +97,7 @@ async def create_user_by_admin(
             email=body.email,
             password=body.password,
             role_str=body.role,
-            is_active=body.is_active or True,
+            is_active=body.is_active,
         )
     except BadProvidedDataError as exc:
         raise_http_400_error(detail=exc.errors)

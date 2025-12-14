@@ -180,7 +180,7 @@ class UserService:
         email: str,
         password: str,
         role_str: str = UserRole.USER.value,
-        is_active: bool = True,
+        is_active: Optional[bool] = None,
     ) -> UserDTO:
         """Create a new user by an admin or superadmin."""
 
@@ -194,14 +194,14 @@ class UserService:
         # Role restriction logic check
         self._validate_creation_permissions(creator, role, username, email)
 
-        # Get user from DB
+        # Create user in DB and get user user data
         return await self._create_user_common(
             creator=creator,
             username=username,
             email=email,
             password=password,
             role=role,
-            is_active=is_active,
+            is_active=is_active if is_active is not None else True,
         )
 
     async def get_all_users(
