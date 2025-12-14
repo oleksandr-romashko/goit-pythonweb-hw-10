@@ -238,9 +238,9 @@ class UserService:
         for user, contacts_count in users_with_contacts_counts:
             # Flag whether to hide additional info from user
             show_full = (
-                requester.role == UserRole.SUPERADMIN
-                or user.id == requester.id
-                or user.role == UserRole.USER
+                requester.role == UserRole.SUPERADMIN  # Superadmin sees everyone fully
+                or user.id == requester.id  # User sees self fully
+                or user.role in {UserRole.MODERATOR, UserRole.USER}
             )
 
             if show_full:
@@ -326,9 +326,9 @@ class UserService:
 
         # Define flag, if to show full or partial user information
         show_full = (
-            requester.role == UserRole.SUPERADMIN
-            or requester.id == user.id
-            or user.role == UserRole.USER
+            requester.role == UserRole.SUPERADMIN  # Superadmin sees everyone fully
+            or user.id == requester.id  # User sees self fully
+            or user.role in {UserRole.MODERATOR, UserRole.USER}
         )
 
         if show_full:
