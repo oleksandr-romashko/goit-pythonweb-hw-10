@@ -4,7 +4,7 @@ Pydantic schemas for users operations.
 Includes request models.
 """
 
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, EmailStr
 
@@ -19,11 +19,12 @@ from src.api.schemas.validators.users import (
 from src.api.schemas.common.fields import EmailField
 from .enums import UserFilterRole
 from .fields import (
-    UsernameField,
-    PasswordField,
-    RoleField,
+    AvatarResetField,
     IsActiveField,
     InactiveLastSortField,
+    PasswordField,
+    RoleField,
+    UsernameField,
 )
 
 
@@ -94,6 +95,8 @@ class UserUpdateAdminRequestSchema(BaseModel):
     username: Optional[str] = UsernameField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
     role: Optional[str] = RoleField(optional=True)
+
+    avatar: Optional[Literal[None]] = AvatarResetField()
 
     class Config:
         """Additional model config to forbid adding extra fields"""

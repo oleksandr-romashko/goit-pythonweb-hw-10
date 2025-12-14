@@ -48,6 +48,17 @@ def AvatarField(optional: bool = False) -> Any:  # pylint: disable=invalid-name
     )
 
 
+def AvatarResetField() -> Any:  # pylint: disable=invalid-name
+    """Construct avatar field to reset avatar with value example"""
+    return Field(
+        default=None,
+        description=(
+            "Optional field to reset user avatar to default (Gravatar). Only null is allowed."
+        ),
+        json_schema_extra={"example": None},
+    )
+
+
 def IsEmailConfirmedField(  # pylint: disable=invalid-name
     optional: bool = False,
 ) -> Any:  # pylint: disable=invalid-name

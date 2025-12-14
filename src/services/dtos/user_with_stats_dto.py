@@ -7,6 +7,8 @@ from typing import Self, Optional, Dict
 from src.db.models import User
 from src.db.models.enums import UserRole
 
+from .user_dto import UserDTO
+
 
 @dataclass(slots=True, frozen=True)
 class UserWithStatsDTO:
@@ -26,7 +28,7 @@ class UserWithStatsDTO:
     @classmethod
     def from_orm_with_count(
         cls,
-        user: User,
+        user: User | UserDTO,
         contacts_count: Optional[int] = None,
         hide_email: bool = False,
         hide_personal: bool = False,

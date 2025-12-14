@@ -1,5 +1,6 @@
 """Service layer providing business logic for managing User entities."""
 
+from dataclasses import dataclass
 from typing import Optional, Union, Any, Mapping, Dict, List, Tuple
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,7 +21,6 @@ from .dtos import UserDTO, UserWithStatsDTO
 from .errors import (
     BadProvidedDataError,
     InvalidUserCredentialsError,
-    EmailChangeNotAllowedError,
     UserConflictError,
     UserInactiveError,
     UserRoleIsInvalidError,
@@ -28,6 +28,15 @@ from .errors import (
     UserEmailIsAlreadyConfirmedError,
 )
 from .markers import AppInitActor, APP_INIT_ACTOR, NOT_PROVIDED
+
+
+@dataclass
+class UserAdminUpdateResult:
+    """Dataclass representing user update result, updated by admin"""
+
+    user: UserDTO
+    avatar_reset: bool
+    old_avatar: Optional[str]
 
 
 # TODO: Add email change flow
@@ -434,49 +443,51 @@ class UserService:
         # 6. Return updated user DTO with contacts_count
         return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
 
-    # TODO: admins may invoke email change, but can't change other user email directly
-    # ? if email change reevaluate and decide if to change avatar based on a new email
-    # ? or email change may invoke avatar change later, when the new email is confirmed
-    # * Do not forget ot check for email exists conflict: _validate_email_conflict
-    # TODO: admins may invoke password reset flow, but can't change other user password directly
     async def update_user_by_admin(
         self,
         requester: UserDTO,
         target_user_id: int,
-        changes: Mapping[str, Any],
-        contacts_service: ContactService,
-    ) -> Optional[UserWithStatsDTO]:
+        payload: Mapping[str, Any],
+    ) -> Optional[UserAdminUpdateResult]:
         """
         Update user as admin/superadmin with role-based constraints.
+        - Nobody can perform self-update via this method.
         - Superadmin: can update any fields, including role.
+        - Nobody can update other superadmin users.
         - Admin: can update users, but cannot update other admins or any role field.
-            Admin may update own profile except role.
         """
         # 1. Check payload data
 
-        if not changes:
+        if not payload:
             # Nothing to update
             raise BadProvidedDataError(
                 {"Provided data": "No fields provided to update."}
             )
 
-        # Email change is forbidden until proper email-change flow is implemented
-        if "email" in changes:
-            raise EmailChangeNotAllowedError(
-                "Email change is temporarily disabled until the email change flow is implemented."
-            )
-
+        # role
         new_role: Optional[UserRole] = None
-        if "role" in changes:
+        if "role" in payload:
             # Check if role exists and valid
             try:
-                new_role = UserService._validate_role_exists(changes["role"])
+                new_role = UserService._validate_role_exists(payload["role"])
             except UserRoleIsInvalidError as exc:
                 raise BadProvidedDataError(
-                    {"role": f"Invalid role: {changes['role']}"}
+                    {"role": f"Invalid role: {payload['role']}"}
                 ) from exc
-        new_username = changes.get("username", None)
-        is_active = changes.get("is_active", NOT_PROVIDED)
+        new_username = payload.get("username", None)
+        is_active = payload.get("is_active", NOT_PROVIDED)
+
+        # avatar
+        avatar = payload["avatar"] if "avatar" in payload else NOT_PROVIDED
+        if avatar is not NOT_PROVIDED and avatar is not None:
+            raise BadProvidedDataError(
+                {
+                    "avatar": (
+                        f"Invalid optional avatar field value: {payload['avatar']}. "
+                        "Only null value is allowed."
+                    )
+                }
+            )
 
         # 2. Fetch target user
 
@@ -487,8 +498,9 @@ class UserService:
         # 3. Convert orm to dto object
         target_user = UserDTO.from_orm(target_user_orm)
 
-        # 4. Self-update is restricted - use current user update endpoint
+        # 4. Restrictions for update
 
+        # Self-update is restricted - use current user update endpoint
         if requester.id == target_user.id:
             logger.warning(
                 (
@@ -496,7 +508,7 @@ class UserService:
                     "of the following fields %s"
                 ),
                 requester,
-                changes.keys(),
+                payload.keys(),
             )
             raise UserRolePermissionError(
                 (
@@ -508,6 +520,16 @@ class UserService:
         # 5. Update of another user
 
         # 5.1 Requester - Target user role-based restrictions
+
+        # Prevent updating superadmin data
+        if target_user_orm.role == UserRole.SUPERADMIN:
+            logger.warning(
+                "Action is forbidden: %s %s attempted to update SUPERADMIN %s",
+                requester.role.upper(),
+                requester,
+                target_user,
+            )
+            raise UserRolePermissionError("Update of superadmin user is not allowed.")
 
         # Users and moderators cannot use admin update of other users
         if requester.role in {UserRole.USER, UserRole.MODERATOR}:
@@ -531,7 +553,7 @@ class UserService:
                 ),
                 requester,
                 target_user,
-                changes.keys(),
+                payload.keys(),
             )
             raise UserRolePermissionError("Cannot modify superadmin user")
 
@@ -545,10 +567,10 @@ class UserService:
             if requester.role != UserRole.SUPERADMIN:
                 # Only superadmin can change usernames
                 raise UserRolePermissionError(
-                    f"{requester.role} cannot change usernames"
+                    f"{requester.role.upper()} cannot change usernames"
                 )
             data_to_update["username"] = new_username
-            changelog["username"] = f"Assigned new username={new_username}"
+            changelog["username"] = f"Assigned new username = '{new_username}'"
 
         # Role
         if new_role and new_role != target_user.role:
@@ -581,7 +603,7 @@ class UserService:
                 )
             else:
                 data_to_update["role"] = new_role
-                changelog["role"] = f"Assigned new role={new_role.value}"
+                changelog["role"] = f"Assigned new role = '{new_role.upper()}'"
 
         # Is active
         if is_active is not NOT_PROVIDED and is_active != target_user.is_active:
@@ -590,31 +612,68 @@ class UserService:
                 f"User is {'activated' if is_active else 'deactivated'}"
             )
 
+        # Avatar
+        new_avatar = target_user.avatar
+        if avatar is not NOT_PROVIDED and avatar is None:
+            # reset user avatar
+            new_avatar = self.avatar_provider.resolve_default_avatar_or_none(
+                target_user.email
+            )
+            if target_user.avatar != new_avatar:
+                data_to_update["avatar"] = new_avatar
+                changelog["avatar"] = "Performed user avatar reset"
+
         # 5.3 Perform user update
 
-        updated_user = await self.repo.update_user_by_id(target_user.id, data_to_update)
-        if not updated_user:
-            return None
-        logger.debug(
-            "%s %s updated other %s user %s with new data: %s",
-            requester.role,
-            requester,
-            target_user.role,
-            target_user,
-            ", ".join([f"{k}:{v}" for k, v in changelog.items()]),
-        )
-
-        # 5.4 Update user cache
-        if self.user_cache:
-            await self.user_cache.set_user(
-                target_user.id, UserDTO.from_orm(updated_user)
+        result_user = None
+        if not data_to_update:
+            # Nothing to update
+            logger.debug(
+                (
+                    "%s %s tried to update other %s %s with the same user data as it had already. "
+                    "No changes in user data. Actual update skipped."
+                ),
+                requester.role.upper(),
+                requester,
+                target_user.role.upper(),
+                target_user,
+            )
+            result_user = target_user_orm
+        else:
+            result_user = await self.repo.update_user_by_id(
+                target_user.id, data_to_update
+            )
+            if not result_user:
+                return None
+            logger.debug(
+                "%s %s updated other %s %s with new data: %s.",
+                requester.role.upper(),
+                requester,
+                target_user.role.upper(),
+                target_user,
+                "; ".join([f"{k.upper()}: {v}" for k, v in changelog.items()]),
             )
 
-        # 5.5 Get user contacts count
-        contacts_count = await contacts_service.get_contacts_count(target_user.id)
+            # 5.4 Update user cache
+            if self.user_cache:
+                await self.user_cache.set_user(
+                    target_user.id, UserDTO.from_orm(result_user)
+                )
 
-        # 5.6 Return updated user DTO with contacts_count
-        return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
+        # 5.5 Form reply
+        user_dto = UserDTO.from_orm(result_user)
+        avatar_reset = (
+            avatar is not NOT_PROVIDED
+            and avatar is None
+            and target_user.avatar is not None
+            and target_user.avatar != new_avatar
+        )
+        old_avatar = target_user.avatar if avatar_reset else None
+        return UserAdminUpdateResult(
+            user=user_dto,
+            avatar_reset=avatar_reset,
+            old_avatar=old_avatar,
+        )
 
     async def delete_user_by_admin(
         self,

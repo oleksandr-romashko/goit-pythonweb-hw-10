@@ -115,7 +115,9 @@ class FileService:
             logger.debug("Failed to fetch Gravatar for email=%s: %s", user.email, exc)
             return None
 
-    async def delete_avatar(self, user: UserDTO, avatar_to_delete_url: str) -> None:
+    async def delete_avatar(
+        self, user: UserDTO, avatar_to_delete_url: Optional[str]
+    ) -> None:
         """
         Remove user's avatar from cloud storage.
 

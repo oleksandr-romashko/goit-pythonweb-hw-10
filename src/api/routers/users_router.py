@@ -4,13 +4,12 @@ Users API endpoints.
 Provides operations for users.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, BackgroundTasks
 
-from src.services import UserService, ContactService
-from src.services.dtos import UserDTO
+from src.services import ContactService, FileService, UserService
+from src.services.dtos import UserDTO, UserWithStatsDTO
 from src.services.errors import (
     UserConflictError,
-    EmailChangeNotAllowedError,
     BadProvidedDataError,
     UserRolePermissionError,
     UserViewPermissionError,
@@ -18,14 +17,13 @@ from src.services.errors import (
 from src.utils.constants import (
     MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS,
     MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED,
-    MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN,
 )
-from src.utils.logger import logger
 
 from src.api.dependencies import (
-    get_current_active_admin_user,
-    get_user_service,
     get_contacts_service,
+    get_current_active_admin_user,
+    get_file_service,
+    get_user_service,
 )
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_ADMIN_ERRORS_RESPONSES,
@@ -217,10 +215,11 @@ async def get_user_by_id(
         "Partially update existing user record by id.\n\n"
         "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "- **Superadmin**: may update any user and roles.\n"
-        "- **Admin**: may update regular users (and optionally own profile), "
+        "- **Admin**: may update regular users and moderators, "
         "**but NOT** other admins' roles or other admins at all.\n"
-        "- **Only Superadmin** may change roles.\n"
-        "- **No one** may change their own role.\n"
+        "- **Only Superadmin** may change usernames and roles.\n"
+        "- **No one** may change their own role (perform self-update). There is **other endpoint** for this purpose.\n"
+        '- ⚠️ "avatar": null — resets avatar to default (Gravatar if available)'
     ),
     status_code=status.HTTP_200_OK,
     response_model=UserAdminRegisteredUserResponseSchema,
@@ -234,28 +233,27 @@ async def get_user_by_id(
 async def update_user(
     user_id: int,
     body: UserUpdateAdminRequestSchema,
-    user: UserDTO = Depends(get_current_active_admin_user()),
+    background_tasks: BackgroundTasks,
+    current_user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
+    file_service: FileService = Depends(get_file_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
     Update a specific user by ID.
 
     Accessible only by admin and superadmin.
+
     Returns the updated user info.
     """
+    # Update user
     update_payload = body.model_dump(exclude_unset=True)
-
     try:
-        updated_dto = await user_service.update_user_by_admin(
-            requester=user,
+        update_result = await user_service.update_user_by_admin(
+            requester=current_user,
             target_user_id=user_id,
-            changes=update_payload,
-            contacts_service=contacts_service,
+            payload=update_payload,
         )
-    except EmailChangeNotAllowedError as exc:
-        logger.info(exc)
-        raise_http_403_error(MESSAGE_ERROR_EMAIL_CHANGE_IS_FORBIDDEN)
     except UserRolePermissionError as exc:
         raise_http_403_error(
             f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"
@@ -263,10 +261,24 @@ async def update_user(
     except UserViewPermissionError:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
-    if not updated_dto:
+    if not update_result:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
-    return UserAdminRegisteredUserResponseSchema.model_validate(updated_dto.to_dict())
+    # Get user contacts count
+    contacts_count = await contacts_service.get_contacts_count(update_result.user.id)
+
+    # Remove old user avatar in background if avatar reset
+    if update_result.avatar_reset:
+        background_tasks.add_task(
+            file_service.delete_avatar,
+            update_result.user,
+            update_result.old_avatar,
+        )
+
+    response_dto = UserWithStatsDTO.from_orm_with_count(
+        update_result.user, contacts_count
+    )
+    return UserAdminRegisteredUserResponseSchema.model_validate(response_dto.to_dict())
 
 
 @router.delete(
