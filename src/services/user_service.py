@@ -32,11 +32,19 @@ from .markers import AppInitActor, APP_INIT_ACTOR, NOT_PROVIDED
 
 @dataclass
 class UserAdminUpdateResult:
-    """Dataclass representing user update result, updated by admin"""
+    """Dataclass representing user update result"""
 
     user: UserDTO
     avatar_reset: bool
     old_avatar: Optional[str]
+
+
+@dataclass
+class UserAdminDeleteResult:
+    """Dataclass representing user deletion result"""
+
+    user: UserDTO
+    avatar: Optional[str]
 
 
 # TODO: Add email change flow
@@ -679,85 +687,74 @@ class UserService:
         self,
         requester: UserDTO,
         target_user_id: int,
-        contacts_service: Optional[ContactService] = None,
-    ) -> Optional[UserWithStatsDTO]:
+    ) -> Optional[UserAdminDeleteResult]:
         """
         Delete a user by admin or superadmin, with strict role-based rules.
 
         Rules:
         - SUPERADMIN can delete any user except themselves and other SUPERADMINs.
         - ADMIN can delete only regular USERs, not themselves or other admins.
-        - USERs cannot delete anyone.
+        - MODERATOR or USER cannot delete anyone.
 
         Raises:
             UserRolePermissionError: if requester is not allowed to delete the target user.
         """
         # 1. Fetch the target user
 
-        user = await self.repo.get_user_by_id(target_user_id)
-        if not user:
+        user_orm = await self.repo.get_user_by_id(target_user_id)
+        if not user_orm:
             return None
 
         # 2. Prevent self-deletion
 
-        if requester.id == user.id:
+        if requester.id == user_orm.id:
             raise UserRolePermissionError("Users cannot delete themselves")
 
         # 3. Role-based restrictions
 
         # 3.1 User cannot delete anyone
         if requester.role == UserRole.USER:
-            raise UserRolePermissionError(
-                "Regular users are not allowed to delete users"
-            )
+            raise UserRolePermissionError("Users are not allowed to delete users")
 
         # 3.2 Moderator cannot delete anyone
         if requester.role == UserRole.MODERATOR:
             raise UserRolePermissionError("Moderators are not allowed to delete users")
 
-        # 3.3 Superadmin cannot delete other superadmins
-        if requester.role == UserRole.SUPERADMIN and user.role == UserRole.SUPERADMIN:
-            raise UserRolePermissionError("Superadmin cannot delete another superadmin")
-
         # 3.3 Admin cannot delete other admins or superadmins
-        if requester.role == UserRole.ADMIN and user.role in {
+        if requester.role == UserRole.ADMIN and user_orm.role in {
             UserRole.ADMIN,
             UserRole.SUPERADMIN,
         }:
-            raise UserRolePermissionError("Admins cannot delete admins or superadmins")
+            raise UserRolePermissionError("Admins cannot delete admins")
 
-        # 4. Get contacts count before deletion
+        # 3.4 Superadmin cannot delete other superadmins
+        if (
+            requester.role == UserRole.SUPERADMIN
+            and user_orm.role == UserRole.SUPERADMIN
+        ):
+            raise UserRolePermissionError("Superadmin cannot delete another superadmin")
 
-        contacts_count = (
-            await contacts_service.get_contacts_count(user.id)
-            if contacts_service
-            else None
-        )
+        # 4. Perform deletion
 
-        # 5. Perform deletion
+        avatar = user_orm.avatar
 
-        deleted_user = await self.repo.remove_user_by_id(user.id)
-        if not deleted_user:
+        deleted = await self.repo.remove_user_by_id(user_orm.id)
+        if not deleted:
             return None
 
         logger.info(
             "%s %s deleted %s %s",
             requester.role.upper(),
             requester,
-            deleted_user.role.upper(),
-            UserDTO.from_orm(user),
+            deleted.role.upper(),
+            UserDTO.from_orm(deleted),
         )
 
-        # 6. Delete user cache
+        # 5. Invalidate deleted user cache
         if self.user_cache:
             await self.user_cache.invalidate_user(target_user_id)
 
-        # 7. Return deleted user info with stats
-        return UserWithStatsDTO.from_orm_with_count(
-            deleted_user,
-            contacts_count,
-            hide_personal=True,
-        )
+        return UserAdminDeleteResult(UserDTO.from_orm(deleted), avatar)
 
     async def validate_user_credentials(
         self, username: str, plain_password: str

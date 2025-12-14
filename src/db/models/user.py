@@ -34,7 +34,9 @@ class User(TimestampMixin, Base):
         String(20), nullable=False, default=UserRole.USER, server_default=UserRole.USER
     )
 
-    contacts: Mapped[List["Contact"]] = relationship(back_populates="user")
+    contacts: Mapped[List["Contact"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", passive_deletes=True
+    )
 
     __table_args__ = (
         Index("idx_users_username_lower", func.lower(username), unique=True),

@@ -290,8 +290,9 @@ async def update_user(
         "- **Superadmin** can delete any user except themselves and other superadmins.\n"
         "- **Admin** can delete only regular users (not themselves, not other admins "
         "or superadmins).\n"
-        "- **Users** cannot delete anyone.\n\n"
-        "⚠️ The operation performs a **permanent deletion** (not soft delete)."
+        "- **Moderators** and **Users** cannot delete anyone.\n\n"
+        "⚠️ The operation performs a **permanent deletion** (not soft delete).\n\n"
+        "⚠️ Removes user avatar if any previously uploaded to the cloud."
     ),
     status_code=status.HTTP_200_OK,
     response_model=UserAdminRegisteredUserResponseSchema,
@@ -304,9 +305,10 @@ async def update_user(
 )
 async def delete_user(
     user_id: int,
+    background_tasks: BackgroundTasks,
     user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
-    contacts_service: ContactService = Depends(get_contacts_service),
+    file_service: FileService = Depends(get_file_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
     Delete a specific user by ID.
@@ -315,18 +317,28 @@ async def delete_user(
 
     Returns the deleted user's data (for confirmation/logging purposes).
     """
+    # Delete user
     try:
-        deleted_dto = await user_service.delete_user_by_admin(
+        deletion_result = await user_service.delete_user_by_admin(
             requester=user,
             target_user_id=user_id,
-            contacts_service=contacts_service,
         )
     except UserRolePermissionError as exc:
         raise_http_403_error(
             f"{MESSAGE_ERROR_USER_ROLE_INVALID_PERMISSIONS}: {str(exc)}"
         )
 
-    if not deleted_dto:
+    if not deletion_result:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
-    return UserAdminRegisteredUserResponseSchema.model_validate(deleted_dto.to_dict())
+    # Remove user avatar from storage after successful deletion
+    if deletion_result.avatar:
+        background_tasks.add_task(
+            file_service.delete_avatar,
+            deletion_result.user,
+            deletion_result.avatar,
+        )
+
+    return UserAdminRegisteredUserResponseSchema.model_validate(
+        deletion_result.user.to_dict()
+    )
