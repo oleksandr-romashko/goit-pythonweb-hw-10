@@ -114,7 +114,7 @@ class UsersFilterRequestSchema(BaseModel):
             "(optional parameter, case-insensitive partial match search)"
         ),
     )
-    email: Optional[EmailStr] = EmailField(
+    email: Optional[str] = EmailField(
         optional=True,
         description=(
             "Filter by e-mail match "
