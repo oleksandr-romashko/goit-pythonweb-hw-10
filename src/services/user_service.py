@@ -301,7 +301,7 @@ class UserService:
         if user.role == UserRole.SUPERADMIN and requester.id != user.id:
             logger.warning(
                 "Action is forbidden: %s %s attempted to view info about SUPERADMIN user %s",
-                requester.role.value.upper(),
+                requester.role.upper(),
                 requester,
                 UserDTO.from_orm(user),
             )
@@ -683,7 +683,7 @@ class UserService:
 
         logger.info(
             "%s %s deleted %s %s",
-            requester.role.value.upper(),
+            requester.role.upper(),
             requester,
             deleted_user.role.value.upper(),
             UserDTO.from_orm(user),
