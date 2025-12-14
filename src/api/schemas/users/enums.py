@@ -9,4 +9,5 @@ class UserFilterRole(StrEnum):
     """Defines available filter values for user roles."""
 
     USER = UserRole.USER
+    MODERATOR = UserRole.MODERATOR
     ADMIN = UserRole.ADMIN
