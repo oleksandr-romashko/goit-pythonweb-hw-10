@@ -131,6 +131,7 @@ def InactiveLastSortField(  # pylint: disable=invalid-name
 
     return Field(
         None if optional else default,
-        description=description or "Show inactive users last",
+        description=description
+        or "Show inactive users last. If omitted, defaults to false.",
         json_schema_extra={"example": default or False},
     )

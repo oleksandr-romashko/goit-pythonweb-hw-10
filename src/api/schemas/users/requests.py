@@ -6,10 +6,7 @@ Includes request models.
 
 from typing import Optional
 
-from pydantic import (
-    BaseModel,
-    EmailStr,
-)
+from pydantic import BaseModel, EmailStr
 
 from src.db.models.enums.user_roles import UserRole
 
