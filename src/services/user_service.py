@@ -545,7 +545,7 @@ class UserService:
             if requester.role != UserRole.SUPERADMIN:
                 # Only superadmin can change usernames
                 raise UserRolePermissionError(
-                    f"{requester.role.value} cannot change usernames"
+                    f"{requester.role} cannot change usernames"
                 )
             data_to_update["username"] = new_username
             changelog["username"] = f"Assigned new username={new_username}"
@@ -557,7 +557,7 @@ class UserService:
                 logger.warning(
                     "Action is forbidden: Non-superadmin %s attempted to change role of %s %s",
                     requester,
-                    target_user.role.value.upper(),
+                    target_user.role.upper(),
                     target_user,
                 )
                 raise UserRolePermissionError("Only superadmin can change user roles")
@@ -597,9 +597,9 @@ class UserService:
             return None
         logger.debug(
             "%s %s updated other %s user %s with new data: %s",
-            requester.role.value,
+            requester.role,
             requester,
-            target_user.role.value,
+            target_user.role,
             target_user,
             ", ".join([f"{k}:{v}" for k, v in changelog.items()]),
         )
@@ -685,7 +685,7 @@ class UserService:
             "%s %s deleted %s %s",
             requester.role.upper(),
             requester,
-            deleted_user.role.value.upper(),
+            deleted_user.role.upper(),
             UserDTO.from_orm(user),
         )
 
