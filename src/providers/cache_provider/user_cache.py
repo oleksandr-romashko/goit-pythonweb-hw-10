@@ -18,7 +18,15 @@ from .cache_provider import RedisCacheProvider
 
 
 class UserRedisCacheProvider(RedisCacheProvider[UserDTO]):
-    """Redis cache provider for user DTO"""
+    """
+    Redis cache provider for UserDTO.
+
+    Contract:
+    - cache key is derived from user_id (int)
+    - cache value: UserDTO
+    - each entry represents a snapshot of a single user
+    - cache consistency is best-effort
+    """
 
     def __init__(self, redis: Redis) -> None:
         super().__init__(

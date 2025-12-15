@@ -48,12 +48,12 @@ def get_mail_service() -> MailService:
 
 def get_contacts_service(
     db_session: AsyncSession = Depends(get_db_session),
-    count_per_user_cache: ContactsCountUserRedisCacheProvider = Depends(
+    contacts_count_cache: ContactsCountUserRedisCacheProvider = Depends(
         get_contacts_count_cache_provider
     ),
 ) -> ContactService:
     """Dependency provider for ContactsService."""
-    return ContactService(db_session, count_per_user_cache=count_per_user_cache)
+    return ContactService(db_session, contacts_count_cache=contacts_count_cache)
 
 
 def get_user_service(

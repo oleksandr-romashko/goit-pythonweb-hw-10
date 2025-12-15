@@ -14,24 +14,36 @@ from src.utils.query_helpers import get_pagination
 
 
 class ContactService:
-    """Handles business logic related to contacts."""
+    """
+    Handles business logic related to contacts.
+
+    ContactService caching policy:
+    - Contacts count cache is keyed based on user_id
+    - Cache is invalidated on all write paths that affect count
+    - Read paths may warm the cache
+    """
 
     def __init__(
         self,
         db_session: AsyncSession,
-        count_per_user_cache: Optional[ContactsCountUserRedisCacheProvider] = None,
+        *,
+        contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = None,
     ):
         """Initialize the service with a contacts repository."""
         self.repo = ContactsRepository(db_session)
-        self.count_per_user_cache = count_per_user_cache
+        self.contacts_count_cache = contacts_count_cache
 
     async def create_contact(self, user_id: int, data: Dict[str, Any]) -> Contact:
-        """Create a new contact for a given user."""
+        """
+        Create a new contact for a given user.
+
+        Invalidates contacts count cache, if cache is available.
+        """
         contact = await self.repo.create_contact(user_id, data)
 
         # Delete user contacts count cache
-        if self.count_per_user_cache:
-            await self.count_per_user_cache.invalidate_contacts_count(user_id)
+        if self.contacts_count_cache:
+            await self.contacts_count_cache.invalidate_contacts_count(user_id)
 
         return contact
 
@@ -53,11 +65,15 @@ class ContactService:
         return contacts, total_count
 
     async def get_contacts_count(self, user_id: int) -> int:
-        """Return the total number of contacts for a user."""
+        """
+        Return the total number of contacts for a user.
+
+        Provided with contacts count caching (read/write), if cache is available.
+        """
         # 1. Try get user from cache
-        if self.count_per_user_cache:
+        if self.contacts_count_cache:
             contacts_count_cached: Optional[int] = (
-                await self.count_per_user_cache.get_contacts_count(user_id)
+                await self.contacts_count_cache.get_contacts_count(user_id)
             )
             if contacts_count_cached is not None:
                 logger.debug(
@@ -67,14 +83,14 @@ class ContactService:
                 return contacts_count_cached
             logger.debug("[CACHE MISS] User contacts count for user_id=%s", user_id)
         else:
-            logger.debug("[CACHE ERROR] User contacts count cache is disabled")
+            logger.debug("[CACHE SKIPPED] User contacts count cache is disabled")
 
         # 2. If not in cache --> request from DB
         contacts_count = await self.repo.get_contacts_total_count(user_id)
 
         # 3. Save to cache
-        if self.count_per_user_cache:
-            await self.count_per_user_cache.set_contacts_count(user_id, contacts_count)
+        if self.contacts_count_cache:
+            await self.contacts_count_cache.set_contacts_count(user_id, contacts_count)
 
         return contacts_count
 
@@ -94,15 +110,23 @@ class ContactService:
     async def update_contact_by_id(
         self, user_id: int, contact_id: int, data: Dict[str, Any]
     ) -> Optional[Contact]:
-        """Update a contact fully or partially."""
+        """
+        Update a contact fully or partially.
+
+        No action on contacts count cache, as no contact ownership change or soft-delete.
+        """
         return await self.repo.update_contact_by_id(user_id, contact_id, data)
 
     async def remove_contact(self, user_id: int, contact_id: int) -> Optional[Contact]:
-        """Delete a contact by ID."""
+        """
+        Delete a contact by ID.
+
+        Invalidates contacts count cache, if cache is available.
+        """
         contact = await self.repo.remove_contact_by_id(user_id, contact_id)
 
         # Delete user contacts count cache
-        if self.count_per_user_cache:
-            await self.count_per_user_cache.invalidate_contacts_count(user_id)
+        if self.contacts_count_cache:
+            await self.contacts_count_cache.invalidate_contacts_count(user_id)
 
         return contact

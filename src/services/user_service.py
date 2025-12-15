@@ -80,7 +80,14 @@ class UserAdminDeleteResult:
 # * "Admins cannot create admins"
 # * "Moderators cannot create users"
 class UserService:
-    """Handles business logic related to users."""
+    """
+    Handles business logic related to users.
+
+    UserService caching policy:
+    - User cache is keyed based on user_id
+    - Cache is updated on all write paths
+    - Read paths may optionally warm the cache
+    """
 
     def __init__(
         self,
@@ -144,7 +151,11 @@ class UserService:
             raise UserRoleIsInvalidError(f"Invalid role: '{role}'") from exc
 
     async def create_superuser(self, username: str, email: str, password: str) -> None:
-        """Create a superuser if it doesn't exist. Returns True if created."""
+        """
+        Create a superuser if it doesn't exist. Returns True if created.
+
+        Provided with user caching via _create_user_common, if user cache is available.
+        """
         if not email:
             raise BadProvidedDataError(
                 {"email": "Email for superadmin is empty or missing."}
@@ -185,6 +196,8 @@ class UserService:
         """
         Create a new user (public access).
 
+        Provided with user caching via _create_user_common, if user cache is available.
+
         Raises:
             UserConflictError: if username or email already exist.
         """
@@ -206,7 +219,11 @@ class UserService:
         role_str: str = UserRole.USER.value,
         is_active: Optional[bool] = None,
     ) -> UserDTO:
-        """Create a new user by an admin or superadmin."""
+        """
+        Create a new user by an admin or superadmin.
+
+        Provided with user caching via _create_user_common, if user cache is available.
+        """
 
         # Provided role check
         # Check if role exists and valid
@@ -279,7 +296,11 @@ class UserService:
         return result, total_count
 
     async def get_user_by_id(self, user_id: int) -> Optional[UserDTO]:
-        """Retrieve a user dto by ID or return None if not exists."""
+        """
+        Retrieve a user dto by ID or return None if not exists.
+
+        Provided with user caching (read/write), if user cache is available.
+        """
         # 1. Try get user from cache
         if self.user_cache:
             user_cached: Optional[UserDTO] = await self.user_cache.get_user(user_id)
@@ -288,7 +309,7 @@ class UserService:
                 return user_cached
             logger.debug("[CACHE MISS] User for user_id=%s", user_id)
         else:
-            logger.debug("[CACHE ERROR] User cache is disabled")
+            logger.debug("[CACHE SKIPPED] User cache is disabled")
 
         # 2. If not in cache --> request from DB
         user_orm = await self.repo.get_user_by_id(user_id)
@@ -342,14 +363,40 @@ class UserService:
         return UserGetResult(user=user, show_full=show_full)
 
     async def get_user_by_username(self, username: str) -> Optional[UserDTO]:
-        """Retrieve a user by username or return None if not exists."""
+        """
+        Retrieve a user by username or return None if not exists.
+
+        Provided with warming cache on user, if user cache is available.
+        """
         user_orm = await self.repo.get_user_by_username(username)
-        return UserDTO.from_orm(user_orm) if user_orm else None
+        if not user_orm:
+            return None
+
+        user_dto = UserDTO.from_orm(user_orm)
+
+        # Update user cache (warming cache)
+        if self.user_cache:
+            await self.user_cache.set_user(user_dto.id, user_dto)
+
+        return user_dto
 
     async def get_user_by_email(self, email: str) -> Optional[UserDTO]:
-        """Retrieve a user by email or return None if not exists."""
+        """
+        Retrieve a user by email or return None if not exists.
+
+        Provided with warming cache on user, if user cache is available.
+        """
         user_orm: Optional[User] = await self.repo.get_user_by_email(email)
-        return UserDTO.from_orm(user_orm) if user_orm else None
+        if not user_orm:
+            return None
+
+        user_dto = UserDTO.from_orm(user_orm)
+
+        # Update user cache (warming cache)
+        if self.user_cache:
+            await self.user_cache.set_user(user_dto.id, user_dto)
+
+        return user_dto
 
     async def update_user_avatar(
         self,
@@ -358,6 +405,8 @@ class UserService:
     ) -> Optional[str]:
         """
         Update current user avatar value in DB.
+
+        Updates user cache, if user cache is available.
 
         Args:
             current_user: user performing the change
@@ -405,6 +454,8 @@ class UserService:
         """
         Update a current user password.
 
+        Updates user cache, if user cache is available.
+
         Raises:
         - BadProvidedDataError: if any field has bad or improper value
         - InvalidUserCredentialsError: if old password is not correct or doesn't match
@@ -447,6 +498,8 @@ class UserService:
         - Superadmin: can update any fields, including role.
         - Nobody can update other superadmin users.
         - Admin: can update users, but cannot update other admins or any role field.
+
+        Updates user cache, if user cache is available.
         """
         # 1. Check payload data
 
@@ -680,6 +733,8 @@ class UserService:
         - ADMIN can delete only regular USERs, not themselves or other admins.
         - MODERATOR or USER cannot delete anyone.
 
+        Invalidates user cache, if user cache is available.
+
         Raises:
             UserRolePermissionError: if requester is not allowed to delete the target user.
         """
@@ -764,6 +819,8 @@ class UserService:
         """
         Validate that the user exists, matches the token data, and confirm email.
 
+        Updates user cache, if user cache is available.
+
         Raises:
             InvalidUserCredentialsError: if user not found or email doesn't match
             UserEmailIsAlreadyConfirmedError: if user email has been confirmed already
@@ -819,7 +876,11 @@ class UserService:
         role: UserRole,
         is_active: bool = True,
     ) -> UserDTO:
-        """Common internal method for user creation logic."""
+        """
+        Common internal method for user creation logic.
+
+        Updates user cache, if user cache is available.
+        """
 
         # Conflicts check
         errors: dict[str, str] = {}
@@ -845,7 +906,7 @@ class UserService:
         # Normalize email
         normalized_email = email.strip().lower()
 
-        # Create new user data
+        # Create new user
         new_user_data = {
             "username": username,
             "email": normalized_email,
@@ -856,23 +917,28 @@ class UserService:
             "is_email_confirmed": False,
         }
         new_user = await self.repo.create_user(new_user_data)
+        new_user_dto = UserDTO.from_orm(new_user)
 
+        # Log creation
         creator_role = (
             f"{creator.role.upper()} "
             if creator and isinstance(creator, UserDTO)
             else ""
         )
         creator_info = creator if creator else "Anonymous user"
-        new_user_info = UserDTO.from_orm(new_user)
         logger.info(
             "%s%s created a new %s %s",
             creator_role,
             creator_info,
-            new_user_info.role.upper(),
-            new_user_info,
+            new_user_dto.role.upper(),
+            new_user_dto,
         )
 
-        return UserDTO.from_orm(new_user)
+        # Set cache for created user
+        if self.user_cache:
+            await self.user_cache.set_user(new_user_dto.id, new_user_dto)
+
+        return new_user_dto
 
     def _validate_creation_permissions(
         self, creator: UserDTO, role: UserRole, username: str, email: str

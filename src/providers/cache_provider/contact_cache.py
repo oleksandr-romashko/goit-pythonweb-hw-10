@@ -17,7 +17,15 @@ from .cache_provider import RedisCacheProvider
 
 
 class ContactsCountUserRedisCacheProvider(RedisCacheProvider[int]):
-    """Redis cache provider for contacts count for a user"""
+    """
+    Redis cache provider for contacts count.
+
+    Contract:
+    - cache key is derived from user_id (int)
+    - cache value: int (contacts count)
+    - cache entries represent a number of contacts user has
+    - cache consistency is best-effort
+    """
 
     def __init__(self, redis: Redis) -> None:
         super().__init__(
