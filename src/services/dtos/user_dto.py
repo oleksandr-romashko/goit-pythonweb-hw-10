@@ -60,12 +60,24 @@ class UserDTO:
             is_active=data["is_active"],
             is_email_confirmed=data["is_email_confirmed"],
             avatar=data.get("avatar"),
-            created_at=data.get("created_at"),
-            updated_at=data.get("updated_at"),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if data.get("created_at")
+                else None
+            ),
+            updated_at=(
+                datetime.fromisoformat(data["updated_at"])
+                if data.get("updated_at")
+                else None
+            ),
         )
 
     def to_dict(self) -> dict:
         """Convert DTO to dictionary for JSON serialization."""
         data = asdict(self)
         data["role"] = self.role.value if isinstance(self.role, UserRole) else self.role
+        if data["created_at"]:
+            data["created_at"] = data["created_at"].isoformat()
+        if data["updated_at"]:
+            data["updated_at"] = data["updated_at"].isoformat()
         return data
