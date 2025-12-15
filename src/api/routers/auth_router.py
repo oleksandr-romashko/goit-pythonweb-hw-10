@@ -117,7 +117,9 @@ async def register_user(
             body.username, body.email, body.password
         )
         logger.info(
-            "Created a new USER with id = %s and username '%s'.", user.id, user.username
+            "Created a new USER with user_id = %s and username '%s'.",
+            user.id,
+            user.username,
         )
     except UserConflictError as exc:
         logger.info(exc)
