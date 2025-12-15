@@ -16,7 +16,6 @@ from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 from src.utils.security.password_utils import get_password_hash, verify_password
 
-from .contact_service import ContactService
 from .dtos import UserDTO, UserWithStatsDTO
 from .errors import (
     BadProvidedDataError,
@@ -402,8 +401,7 @@ class UserService:
         target_user: UserDTO,
         current_password: str,
         new_password: str,
-        contacts_service: ContactService,
-    ) -> Optional[UserWithStatsDTO]:
+    ) -> Optional[UserDTO]:
         """
         Update a current user password.
 
@@ -411,7 +409,7 @@ class UserService:
         - BadProvidedDataError: if any field has bad or improper value
         - InvalidUserCredentialsError: if old password is not correct or doesn't match
         """
-        # 1. Validate provided password data
+        # 1. Validate password change
         UserService._validate_password_change(
             current_password, new_password, target_user.hashed_password
         )
@@ -425,7 +423,8 @@ class UserService:
         )
         if not updated_user:
             return None
-        logger.debug("Current user %s assigned with a new password", target_user)
+
+        logger.debug("User %s updated password", target_user)
 
         # 4. Update user cache
         if self.user_cache:
@@ -433,11 +432,8 @@ class UserService:
                 target_user.id, UserDTO.from_orm(updated_user)
             )
 
-        # 5. Get user contacts count
-        contacts_count = await contacts_service.get_contacts_count(target_user.id)
-
-        # 6. Return updated user DTO with contacts_count
-        return UserWithStatsDTO.from_orm_with_count(updated_user, contacts_count)
+        # 5. Return updated user DTO
+        return UserDTO.from_orm(updated_user)
 
     async def update_user_by_admin(
         self,

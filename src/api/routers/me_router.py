@@ -114,12 +114,12 @@ async def update_user_password(
     body: UserUpdatePasswordRequestSchema,
     user: UserDTO = Depends(get_current_active_user()),
     user_service: UserService = Depends(get_user_service),
-    contacts_service: ContactService = Depends(get_contacts_service),
 ) -> UserPasswordUpdateResponseSchema:
-    """Partially update current user information."""
+    """Update current user password."""
     current_password = body.current_password
     new_password = body.password
 
+    # Validate input values (escape Pydantic sensitive data exposure)
     if current_password is None or new_password is None:
         errors = {}
         if current_password is None:
@@ -130,14 +130,10 @@ async def update_user_password(
             detail={"errors": errors, "message": "Invalid request data."}
         )
 
+    # Update password
     try:
-        updated_user_dto: Optional[UserWithStatsDTO] = (
-            await user_service.update_user_password(
-                user,
-                current_password,
-                new_password,
-                contacts_service,
-            )
+        updated = await user_service.update_user_password(
+            user, current_password, new_password
         )
     except BadProvidedDataError as exc:
         logger.info(exc)
@@ -146,13 +142,14 @@ async def update_user_password(
         raise_http_403_error(str(exc))
 
     # Edge case - user has been just deleted
-    if updated_user_dto is None:
+    if updated is None:
         logger.warning(
             "User %s became inaccessible (removed or blocked) during/after update",
             user,
         )
         raise_http_401_error()
 
+    # Return typical generalized response
     return UserPasswordUpdateResponseSchema()
 
 
