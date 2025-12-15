@@ -7,10 +7,9 @@ Includes request models.
 from typing import Optional
 from datetime import date
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 from src.api.schemas.validators.common import at_least_one_field_required_validator
-from src.api.schemas.validators.contacts import birthdate_not_in_the_future_validator
 
 from src.api.schemas.common.fields import EmailField
 from .fields import (
@@ -22,7 +21,6 @@ from .fields import (
 )
 
 
-@birthdate_not_in_the_future_validator
 class ContactRequestSchema(BaseModel):
     """Contact schema including optional info."""
 
@@ -33,9 +31,17 @@ class ContactRequestSchema(BaseModel):
     birthdate: date = BirthdateField()
     info: Optional[str] = InfoField(optional=True)
 
+    @field_validator("birthdate")
+    @classmethod
+    def _birthdate_not_in_the_future(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        if value > date.today():
+            raise ValueError("Birthdate cannot be in the future")
+        return value
+
 
 @at_least_one_field_required_validator
-@birthdate_not_in_the_future_validator
 class ContactOptionalRequestSchema(BaseModel):
     """Schema for partial contact updates. All fields optional."""
 
@@ -45,6 +51,15 @@ class ContactOptionalRequestSchema(BaseModel):
     phone_number: Optional[str] = PhoneNumberField(optional=True)
     birthdate: Optional[date] = BirthdateField(optional=True)
     info: Optional[str] = InfoField(optional=True)
+
+    @field_validator("birthdate")
+    @classmethod
+    def _birthdate_not_in_the_future(cls, value: Optional[date]) -> Optional[date]:
+        if value is None:
+            return value
+        if value > date.today():
+            raise ValueError("Birthdate cannot be in the future")
+        return value
 
 
 class ContactsFilterRequestSchema(BaseModel):
