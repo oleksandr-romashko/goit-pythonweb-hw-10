@@ -52,6 +52,7 @@ class UserAdminRegisteredUserResponseSchema(
 
     role: Optional[str] = RoleField(optional=True)
     avatar: Optional[str] = AvatarField(optional=True)
+    is_email_confirmed: Optional[bool] = IsEmailConfirmedField(optional=True)
     is_active: Optional[bool] = IsActiveField(optional=True)
 
 

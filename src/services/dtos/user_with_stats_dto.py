@@ -18,10 +18,10 @@ class UserWithStatsDTO:
     username: str
     email: Optional[str]
     role: UserRole
-    is_email_confirmed: bool
-    is_active: Optional[bool]
     avatar: Optional[str]
+    is_email_confirmed: Optional[bool]
     contacts_count: Optional[int]
+    is_active: Optional[bool]
     created_at: Optional[datetime]
     updated_at: Optional[datetime]
 
@@ -39,7 +39,7 @@ class UserWithStatsDTO:
             username=user.username,
             email=user.email if not hide_email else None,
             role=user.role,
-            is_email_confirmed=user.is_email_confirmed,
+            is_email_confirmed=user.is_email_confirmed if not hide_personal else None,
             is_active=user.is_active if not hide_personal else None,
             avatar=user.avatar,
             created_at=user.created_at if not hide_personal else None,
@@ -54,9 +54,10 @@ class UserWithStatsDTO:
             "username": self.username,
             "email": self.email,
             "role": self.role.value if isinstance(self.role, UserRole) else self.role,
-            "is_active": self.is_active,
             "avatar": self.avatar,
+            "is_email_confirmed": self.is_email_confirmed,
+            "contacts_count": self.contacts_count,
+            "is_active": self.is_active,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
-            "contacts_count": self.contacts_count,
         }
