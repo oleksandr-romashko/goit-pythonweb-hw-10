@@ -4,7 +4,7 @@ Users API endpoints.
 Provides operations for users.
 """
 
-from typing import Optional, Union
+from typing import Union
 
 from fastapi import APIRouter, Depends, status, UploadFile, File, BackgroundTasks
 
@@ -14,7 +14,7 @@ from src.services import (
     FileService,
     UserService,
 )
-from src.services.dtos import UserDTO, UserWithStatsDTO
+from src.services.dtos import UserDTO
 from src.services.errors import (
     InvalidUserCredentialsError,
     BadProvidedDataError,
