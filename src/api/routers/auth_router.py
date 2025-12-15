@@ -75,6 +75,7 @@ from src.api.schemas.users.requests import (
     UserLoginRequestSchema,
 )
 from src.api.schemas.users.responses import UserRegisteredResponseSchema
+from src.api.workflows import send_verification_email
 
 router = APIRouter(prefix="/auth", tags=["Auth (Public Access)"])
 
@@ -116,7 +117,7 @@ async def register_user(
             body.username, body.email, body.password
         )
         logger.info(
-            "Created a new user with id = %s and username '%s'.", user.id, user.username
+            "Created a new USER with id = %s and username '%s'.", user.id, user.username
         )
     except UserConflictError as exc:
         logger.info(exc)
@@ -130,8 +131,12 @@ async def register_user(
     data.contacts_count = await contacts_service.get_contacts_count(user.id)
 
     # Send email verification email
-    _send_verification_email(
-        user, str(request.base_url), auth_service, mail_service, background_tasks
+    send_verification_email(
+        target_user=user,
+        base_url=str(request.base_url),
+        auth_service=auth_service,
+        mail_service=mail_service,
+        background_tasks=background_tasks,
     )
 
     return data
@@ -153,9 +158,8 @@ async def resend_verification_email(
     mail_service: MailService = Depends(get_mail_service),
 ) -> Dict[str, str]:
     """Resend verification email to the user email address."""
-
+    # Check user existence
     user: Optional[UserDTO] = await user_service.get_user_by_email(body.email)
-
     if not user:
         # Security best practice: don't reveal whether the email exists.
         logger.info(
@@ -164,6 +168,7 @@ async def resend_verification_email(
         )
         return {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT}
 
+    # Check if user email is confirmed already
     if user.is_email_confirmed:
         logger.debug(
             "Can't resend verification email for user whose email is already verified: %s",
@@ -171,8 +176,13 @@ async def resend_verification_email(
         )
         raise_http_400_error(MESSAGE_ERROR_USER_EMAIL_IS_ALREADY_VERIFIED)
 
-    _send_verification_email(
-        user, str(request.base_url), auth_service, mail_service, background_tasks
+    # Send email verification email
+    send_verification_email(
+        target_user=user,
+        base_url=str(request.base_url),
+        auth_service=auth_service,
+        mail_service=mail_service,
+        background_tasks=background_tasks,
     )
 
     return {"details": MESSAGE_SUCCESS_CONFIRMATION_EMAIL_SENT}
@@ -348,32 +358,6 @@ async def verify_email(
         return RedirectResponse(url=redirect_url, status_code=HTTP_302_FOUND)
 
     return {"detail": MESSAGE_SUCCESS_EMAIL_VERIFIED}
-
-
-def _send_verification_email(
-    user: UserDTO,
-    base_url: str,
-    auth_service: AuthService,
-    mail_service: MailService,
-    background_tasks: BackgroundTasks,
-) -> None:
-    """Send email verification email"""
-
-    # Note: token is not persistent (no side-effects in database),
-    #       still it is more safe and best practice to to handle its creation
-    #       outside of background_tasks below, where email is sent
-    email_verification_token = auth_service.create_email_confirmation_token(
-        user.id, user.email
-    )
-
-    background_tasks.add_task(
-        mail_service.send_registration_welcome_email,
-        user.id,
-        user.email,
-        user.username,
-        base_url,
-        email_verification_token,
-    )
 
 
 async def _authenticate_and_issue_token(

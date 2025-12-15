@@ -868,7 +868,7 @@ class UserService:
             "%s%s created a new %s %s",
             creator_role,
             creator_info,
-            new_user_info.role,
+            new_user_info.role.upper(),
             new_user_info,
         )
 

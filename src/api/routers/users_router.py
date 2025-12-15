@@ -4,9 +4,15 @@ Users API endpoints.
 Provides operations for users.
 """
 
-from fastapi import APIRouter, Depends, status, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 
-from src.services import ContactService, FileService, UserService
+from src.services import (
+    AuthService,
+    ContactService,
+    FileService,
+    MailService,
+    UserService,
+)
 from src.services.dtos import UserDTO, UserWithStatsDTO
 from src.services.errors import (
     UserConflictError,
@@ -20,9 +26,11 @@ from src.utils.constants import (
 )
 
 from src.api.dependencies import (
+    get_auth_service,
     get_contacts_service,
     get_current_active_admin_user,
     get_file_service,
+    get_mail_service,
     get_user_service,
 )
 from src.api.responses.error_responses import (
@@ -49,6 +57,7 @@ from src.api.errors import (
     raise_http_404_error,
     raise_http_409_error,
 )
+from src.api.workflows import send_verification_email
 
 router = APIRouter(
     prefix="/users",
@@ -57,8 +66,14 @@ router = APIRouter(
 )
 
 
-# TODO: PATCH /users/{id}/* — separate simple endpoints to edit user:
+# TODO: PATCH /users/{id}/* — evaluate separate simple endpoints to edit user:
 # * role, active status, block, etc.
+
+
+# TODO: Send password password reset / account activation link email (separate flow) for newly created user by admin instead of email confirmation
+# * User acount may be created even without password, it's just require activation
+# * Usage of reset / activation link will automatically confirm email address
+# * User set password themselves, admin user doesn't know it and have no access to user account
 
 
 @router.post(
@@ -78,9 +93,13 @@ router = APIRouter(
 )
 async def create_user_by_admin(
     body: UserAdminCreateRequestSchema,
+    request: Request,
+    background_tasks: BackgroundTasks,
     user: UserDTO = Depends(get_current_active_admin_user()),
     user_service: UserService = Depends(get_user_service),
     contacts_service: ContactService = Depends(get_contacts_service),
+    auth_service: AuthService = Depends(get_auth_service),
+    mail_service: MailService = Depends(get_mail_service),
 ) -> UserAdminRegisteredUserResponseSchema:
     """
     Create a new user by an admin or superadmin.
@@ -110,6 +129,15 @@ async def create_user_by_admin(
 
     # Add contacts count (probably zero for a newly created user)
     response_data.contacts_count = await contacts_service.get_contacts_count(user.id)
+
+    # Send email verification email
+    send_verification_email(
+        target_user=new_user,
+        base_url=str(request.base_url),
+        auth_service=auth_service,
+        mail_service=mail_service,
+        background_tasks=background_tasks,
+    )
 
     return response_data
 
