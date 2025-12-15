@@ -93,11 +93,12 @@ class UserService:
         self,
         db_session: AsyncSession,
         *,
+        repo: Optional[UsersRepository] = None,
         avatar_provider: Optional[GravatarProvider] = None,
         user_cache: Optional[UserRedisCacheProvider] = None,
     ) -> None:
         """Initialize the service with a users repository and other dependencies."""
-        self.repo = UsersRepository(db_session)
+        self.repo = repo or UsersRepository(db_session)
         self.user_cache = user_cache
         self.avatar_provider = avatar_provider or GravatarProvider()
 
