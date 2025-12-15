@@ -61,9 +61,10 @@ async def create_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Create a new contact."""
+
     try:
         contact: Contact = await contacts_service.create_contact(
-            user.id, body.model_dump()
+            user.id, **body.model_dump()
         )
     except BadProvidedDataError as exc:
         logger.debug(exc)
@@ -198,8 +199,8 @@ async def overwrite_contact(
 ) -> ContactResponseSchema:
     """Fully update an existing contact by ID."""
     try:
-        contact: Optional[Contact] = await contacts_service.update_contact_by_id(
-            user.id, contact_id, body.model_dump()
+        contact: Optional[Contact] = await contacts_service.overwrite_contact_by_id(
+            user.id, contact_id, **body.model_dump()
         )
     except BadProvidedDataError as exc:
         logger.debug(exc)
@@ -233,8 +234,8 @@ async def patch_contact(
 ) -> ContactResponseSchema:
     """Partially update an existing contact."""
     try:
-        contact: Optional[Contact] = await contacts_service.update_contact_by_id(
-            user.id, contact_id, body.model_dump(exclude_unset=True)
+        contact: Optional[Contact] = await contacts_service.update_contact_partially(
+            user.id, contact_id, **body.model_dump(exclude_unset=True)
         )
     except BadProvidedDataError as exc:
         logger.debug(exc)

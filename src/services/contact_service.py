@@ -1,6 +1,7 @@
 """Service layer providing business logic for managing Contact entities."""
 
 from typing import Optional, Any, List, Dict, Tuple
+from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,37 +26,134 @@ class ContactService:
     - Read paths may warm the cache
     """
 
-    def __init__(
-        self,
-        db_session: AsyncSession,
-        *,
-        contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = None,
-    ):
-        """Initialize the service with a contacts repository."""
-        self.repo = ContactsRepository(db_session)
-        self.contacts_count_cache = contacts_count_cache
-
-    async def create_contact(self, user_id: int, data: Dict[str, Any]) -> Contact:
+    @staticmethod
+    def _validate_at_least_has_one_name_field(
+        first_name: Optional[str],
+        last_name: Optional[str],
+    ) -> None:
         """
-        Create a new contact for a given user.
+        Check at least one of name fields has actual value
 
-        Invalidates contacts count cache, if cache is available.
+        Raises:
+            BadProvidedDataError: If both values have no value.
         """
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
-
         if not first_name and not last_name:
             raise BadProvidedDataError(
                 {"name": "At least first_name or last_name must be provided"}
             )
 
-        # Normalize optional name fields
-        data["first_name"] = first_name or ""
-        data["last_name"] = last_name or ""
+    @staticmethod
+    def _validate_birthday_not_in_the_future(birthdate: date) -> None:
+        """
+        Check birthday is not in the future
 
-        contact = await self.repo.create_contact(user_id, data)
+        Raises:
+            BadProvidedDataError: If birthday is in the future."""
+        if birthdate > date.today():
+            raise BadProvidedDataError(
+                {"birthdate": "Birthdate cannot be in the future"}
+            )
 
-        # Delete user contacts count cache
+    @staticmethod
+    def _normalize_full_data(
+        first_name: Optional[str],
+        last_name: Optional[str],
+        email: str,
+        phone_number: str,
+        birthdate: date,
+        info: Optional[str],
+    ) -> Dict[str, Any]:
+        """Normalize partial data and returns dict out of normalized data"""
+        return {
+            "first_name": (first_name or "").strip(),
+            "last_name": (last_name or "").strip(),
+            "email": email.strip(),
+            "phone_number": phone_number.strip(),
+            "birthdate": birthdate,
+            "info": (info or "").strip(),
+        }
+
+    @staticmethod
+    def _normalize_partial_data(
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        email: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        birthdate: Optional[date] = None,
+        info: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Normalize partial data and returns dict out of normalized data"""
+        update_data: Dict[str, Any] = {}
+
+        if first_name is not None:
+            first_name_normalized = first_name.strip()
+            update_data["first_name"] = first_name_normalized
+
+        if last_name is not None:
+            last_name_normalized = last_name.strip()
+            update_data["last_name"] = last_name_normalized
+
+        if email is not None:
+            update_data["email"] = email.strip()
+
+        if phone_number is not None:
+            update_data["phone_number"] = phone_number.strip()
+
+        if birthdate is not None:
+            update_data["birthdate"] = birthdate
+
+        if info is not None:
+            update_data["info"] = info.strip()
+
+        return update_data
+
+    def __init__(
+        self,
+        db_session: AsyncSession,
+        *,
+        repo: Optional[ContactsRepository] = None,
+        contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = None,
+    ):
+        """Initialize the service with a contacts repository."""
+        self.repo: ContactsRepository = repo or ContactsRepository(db_session)
+        self.contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = (
+            contacts_count_cache
+        )
+
+    async def create_contact(
+        self,
+        user_id: int,
+        first_name: Optional[str],
+        last_name: Optional[str],
+        email: str,
+        phone_number: str,
+        birthdate: date,
+        info: Optional[str],
+    ) -> Contact:
+        """
+        Create a new contact for a given user.
+
+        Invalidates contacts count cache, if cache is available.
+
+        Raises:
+            BadProvidedDataError:
+            - If both name fields values have no value.
+            - If birthday is in the future
+        """
+
+        # Domain checks
+        ContactService._validate_at_least_has_one_name_field(first_name, last_name)
+        ContactService._validate_birthday_not_in_the_future(birthdate)
+
+        # Normalize
+        normalized_data = ContactService._normalize_full_data(
+            first_name, last_name, email, phone_number, birthdate, info
+        )
+
+        # Call repository to create
+        contact = await self.repo.create_contact(user_id, normalized_data)
+
+        # Invalidate user contacts count cache
         if self.contacts_count_cache:
             await self.contacts_count_cache.invalidate_contacts_count(user_id)
 
@@ -121,27 +219,117 @@ class ContactService:
         """Return a single contact by its ID, or None if not found."""
         return await self.repo.get_contact_by_id(user_id, contact_id)
 
-    async def update_contact_by_id(
-        self, user_id: int, contact_id: int, data: Dict[str, Any]
+    async def overwrite_contact_by_id(
+        self,
+        user_id: int,
+        contact_id: int,
+        first_name: Optional[str],
+        last_name: Optional[str],
+        email: str,
+        phone_number: str,
+        birthdate: date,
+        info: Optional[str],
     ) -> Optional[Contact]:
         """
         Update a contact fully or partially.
 
-        No action on contacts count cache needed, as no contact ownership change or soft-delete.
-        """
-        first_name = data.get("first_name")
-        last_name = data.get("last_name")
+        No need to invalidate contacts count cache, as ownership/count does not change
 
-        if not first_name and not last_name:
+        Raises:
+            BadProvidedDataError:
+            - If both name fields values have no value.
+            - If birthday is in the future
+        """
+
+        # Domain checks
+        ContactService._validate_at_least_has_one_name_field(first_name, last_name)
+        ContactService._validate_birthday_not_in_the_future(birthdate)
+
+        # Normalize
+        normalized_data = ContactService._normalize_full_data(
+            first_name, last_name, email, phone_number, birthdate, info
+        )
+
+        # Call repository to update
+        contact = await self.repo.update_contact_by_id(
+            user_id, contact_id, normalized_data
+        )
+
+        return contact
+
+    async def update_contact_partially(
+        self,
+        user_id: int,
+        contact_id: int,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        email: Optional[str] = None,
+        phone_number: Optional[str] = None,
+        birthdate: Optional[date] = None,
+        info: Optional[str] = None,
+    ) -> Optional[Contact]:
+        """
+        Partially update an existing contact.
+
+        Only fields that are provided will be updated.
+
+        No need to invalidate contacts count cache, as ownership/count does not change
+
+        Raises:
+            BadProvidedDataError:
+            - If no fields provided
+            - If both name fields values have no value (checks against provided data and DB data).
+            - If birthday is in the future
+        """
+
+        # Check that at least one field is provided
+        if all(
+            field is None
+            for field in [first_name, last_name, email, phone_number, birthdate, info]
+        ):
             raise BadProvidedDataError(
-                {"name": "At least first_name or last_name must be provided"}
+                {"fields": "At least one field must be provided for update"}
             )
 
-        # Normalize optional name fields
-        data["first_name"] = first_name or ""
-        data["last_name"] = last_name or ""
+        # Check birthday field not in the future
+        if birthdate is not None:
+            ContactService._validate_birthday_not_in_the_future(birthdate)
 
-        return await self.repo.update_contact_by_id(user_id, contact_id, data)
+        # Normalize only provided fields
+        update_data = ContactService._normalize_partial_data(
+            first_name, last_name, email, phone_number, birthdate, info
+        )
+
+        # Check at least one of first_name and last_name is not empty (DB vs update fields)
+
+        # Get contact from DB
+        contact_db = await self.repo.get_contact_by_id(user_id, contact_id)
+        if contact_db is None:
+            return None
+
+        # Check at least one name field has value
+        new_first_name = (
+            update_data["first_name"]
+            if "first_name" in update_data
+            else contact_db.first_name
+        )
+        new_last_name = (
+            update_data["last_name"]
+            if "last_name" in update_data
+            else contact_db.last_name
+        )
+        if not new_first_name and not new_last_name:
+            errors = {"name": "At least first_name or last_name must be provided"}
+            if not new_first_name:
+                errors["first_name"] = "first_name can't be empty"
+            if not new_last_name:
+                errors["last_name"] = "last_name can't be empty"
+            raise BadProvidedDataError(errors)
+
+        # Call repository to update
+        contact = await self.repo.update_contact_by_id(user_id, contact_id, update_data)
+
+        return contact
 
     async def remove_contact(self, user_id: int, contact_id: int) -> Optional[Contact]:
         """
