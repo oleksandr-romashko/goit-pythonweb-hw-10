@@ -31,6 +31,14 @@ from .markers import AppInitActor, APP_INIT_ACTOR, NOT_PROVIDED
 
 
 @dataclass
+class UserGetResult:
+    """Dataclass representing retrieving user result"""
+
+    user: UserDTO
+    show_full: bool
+
+
+@dataclass
 class UserAdminUpdateResult:
     """Dataclass representing user update result"""
 
@@ -301,18 +309,19 @@ class UserService:
         self,
         requester: UserDTO,
         user_id: int,
-        contacts_service: ContactService,
-    ) -> Optional[UserWithStatsDTO]:
+    ) -> Optional[UserGetResult]:
         """
-        Retrieve a single user by ID, applying role-based visibility rules.
+        Retrieve a single user by ID.
 
         - SUPERADMIN can see any user.
         - ADMIN cannot see other inactive admins.
         - Contact counts are hidden for admins viewing other admins.
         """
-        user = await self.repo.get_user_by_id(user_id)
-        if not user:
+        user_orm = await self.repo.get_user_by_id(user_id)
+        if not user_orm:
             return None
+
+        user = UserDTO.from_orm(user_orm)
 
         # Restrict providing superadmin data
         if user.role == UserRole.SUPERADMIN and requester.id != user.id:
@@ -320,39 +329,18 @@ class UserService:
                 "Action is forbidden: %s %s attempted to view info about SUPERADMIN user %s",
                 requester.role.upper(),
                 requester,
-                UserDTO.from_orm(user),
+                user,
             )
             return None
 
-        # If current user is admin - do not provide inactive admin user data
-        if (
-            requester.role == UserRole.ADMIN
-            and user.role == UserRole.ADMIN
-            and not user.is_active
-        ):
-            logger.warning(
-                (
-                    "Action is forbidden: "
-                    "%s attempted to view info about other inactive ADMIN user %s "
-                    "while not allowed to view that user"
-                ),
-                requester,
-                UserDTO.from_orm(user),
-            )
-            return None
-
-        # Define flag, if to show full or partial user information
+        # Define if to show full user information
         show_full = (
-            requester.role == UserRole.SUPERADMIN  # Superadmin sees everyone fully
-            or user.id == requester.id  # User sees self fully
+            requester.role == UserRole.SUPERADMIN
+            or requester.id == user.id
             or user.role in {UserRole.MODERATOR, UserRole.USER}
         )
 
-        if show_full:
-            contacts_count = await contacts_service.get_contacts_count(user.id)
-            return UserWithStatsDTO.from_orm_with_count(user, contacts_count)
-
-        return UserWithStatsDTO.from_orm_with_count(user, hide_personal=True)
+        return UserGetResult(user=user, show_full=show_full)
 
     async def get_user_by_username(self, username: str) -> Optional[UserDTO]:
         """Retrieve a user by username or return None if not exists."""

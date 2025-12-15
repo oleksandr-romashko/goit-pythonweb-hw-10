@@ -173,7 +173,7 @@ async def get_all_users(
         "Retrieve details of a specific user by their ID.\n\n"
         "🔒 **Access restricted:** Admin and Superadmin only.\n\n"
         "- **Superadmin** can see any user.\n"
-        "- **Admin** can see other users and admins, but cannot see other inactive admins.\n"
+        "- **Admin** can see user, moderator and limited information about other admin.\n"
     ),
     status_code=status.HTTP_200_OK,
     response_model_exclude_none=True,
@@ -193,19 +193,29 @@ async def get_user_by_id(
     Get a specific user by ID.
 
     Accessible only by admin and superadmin.
+
+    Applying role-based visibility rules
+
     Returns the created user info.
     """
+    # Get user data
     try:
-        user_dto = await user_service.get_user_by_id_for_admin(
-            requester=user, user_id=user_id, contacts_service=contacts_service
+        result = await user_service.get_user_by_id_for_admin(
+            requester=user, user_id=user_id
         )
     except UserViewPermissionError:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
-    if not user_dto:
+    if not result:
         raise_http_404_error(MESSAGE_ERROR_USER_NOT_FOUND_OR_ACTION_IS_NOT_ALLOWED)
 
-    return UserAdminRegisteredUserResponseSchema.model_validate(user_dto.to_dict())
+    if result.show_full:
+        contacts_count = await contacts_service.get_contacts_count(user.id)
+        user_full = UserWithStatsDTO.from_orm_with_count(result.user, contacts_count)
+        return UserAdminRegisteredUserResponseSchema.model_validate(user_full)
+
+    user_partial = UserWithStatsDTO.from_orm_with_count(result.user, hide_personal=True)
+    return UserAdminRegisteredUserResponseSchema.model_validate(user_partial)
 
 
 @router.patch(
