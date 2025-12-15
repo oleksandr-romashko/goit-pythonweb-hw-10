@@ -12,6 +12,8 @@ from src.providers.cache_provider.contact_cache import (
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 
+from .errors import BadProvidedDataError
+
 
 class ContactService:
     """
@@ -39,6 +41,18 @@ class ContactService:
 
         Invalidates contacts count cache, if cache is available.
         """
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+
+        if not first_name and not last_name:
+            raise BadProvidedDataError(
+                {"name": "At least first_name or last_name must be provided"}
+            )
+
+        # Normalize optional name fields
+        data["first_name"] = first_name or ""
+        data["last_name"] = last_name or ""
+
         contact = await self.repo.create_contact(user_id, data)
 
         # Delete user contacts count cache
@@ -113,8 +127,20 @@ class ContactService:
         """
         Update a contact fully or partially.
 
-        No action on contacts count cache, as no contact ownership change or soft-delete.
+        No action on contacts count cache needed, as no contact ownership change or soft-delete.
         """
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+
+        if not first_name and not last_name:
+            raise BadProvidedDataError(
+                {"name": "At least first_name or last_name must be provided"}
+            )
+
+        # Normalize optional name fields
+        data["first_name"] = first_name or ""
+        data["last_name"] = last_name or ""
+
         return await self.repo.update_contact_by_id(user_id, contact_id, data)
 
     async def remove_contact(self, user_id: int, contact_id: int) -> Optional[Contact]:

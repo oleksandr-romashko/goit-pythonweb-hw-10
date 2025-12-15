@@ -12,13 +12,15 @@ from fastapi import APIRouter, Path, Depends, status
 from src.db.models import Contact
 from src.services import ContactService
 from src.services.dtos import UserDTO
+from src.services.errors import BadProvidedDataError
 from src.utils.constants import MESSAGE_ERROR_CONTACT_NOT_FOUND
+from src.utils.logger import logger
 
 from src.api.dependencies import (
     get_current_active_user,
     get_contacts_service,
 )
-from src.api.errors import raise_http_404_error
+from src.api.errors import raise_http_400_error, raise_http_404_error
 from src.api.responses.error_responses import (
     ON_CURRENT_ACTIVE_USER_ERRORS_RESPONSES,
     ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE,
@@ -59,7 +61,14 @@ async def create_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Create a new contact."""
-    contact: Contact = await contacts_service.create_contact(user.id, body.model_dump())
+    try:
+        contact: Contact = await contacts_service.create_contact(
+            user.id, body.model_dump()
+        )
+    except BadProvidedDataError as exc:
+        logger.debug(exc)
+        raise_http_400_error(detail=exc.errors)
+
     return ContactResponseSchema.model_validate(contact)
 
 
@@ -188,11 +197,17 @@ async def overwrite_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Fully update an existing contact by ID."""
-    contact: Optional[Contact] = await contacts_service.update_contact_by_id(
-        user.id, contact_id, body.model_dump()
-    )
+    try:
+        contact: Optional[Contact] = await contacts_service.update_contact_by_id(
+            user.id, contact_id, body.model_dump()
+        )
+    except BadProvidedDataError as exc:
+        logger.debug(exc)
+        raise_http_400_error(detail=exc.errors)
+
     if contact is None:
         raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
+
     return ContactResponseSchema.model_validate(contact)
 
 
@@ -208,7 +223,7 @@ async def overwrite_contact(
     response_description="Successfully updated user contact.",
     responses={**ON_UPDATE_EMPTY_BAD_REQUEST_RESPONSE, **ON_CONTACT_NOT_FOUND_RESPONSE},
 )
-async def update_contact(
+async def patch_contact(
     body: ContactOptionalRequestSchema,
     contact_id: int = Path(
         description="The ID of the contact to update.", ge=1, example=1
@@ -217,11 +232,17 @@ async def update_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Partially update an existing contact."""
-    contact: Optional[Contact] = await contacts_service.update_contact_by_id(
-        user.id, contact_id, body.model_dump(exclude_unset=True)
-    )
+    try:
+        contact: Optional[Contact] = await contacts_service.update_contact_by_id(
+            user.id, contact_id, body.model_dump(exclude_unset=True)
+        )
+    except BadProvidedDataError as exc:
+        logger.debug(exc)
+        raise_http_400_error(detail=exc.errors)
+
     if contact is None:
         raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
+
     return ContactResponseSchema.model_validate(contact)
 
 

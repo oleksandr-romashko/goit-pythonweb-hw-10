@@ -26,8 +26,8 @@ from .fields import (
 class ContactRequestSchema(BaseModel):
     """Contact schema including optional info."""
 
-    first_name: str = FirstNameField()
-    last_name: str = LastNameField()
+    first_name: Optional[str] = FirstNameField(optional=True)
+    last_name: Optional[str] = LastNameField(optional=True)
     email: EmailStr = EmailField()
     phone_number: str = PhoneNumberField()
     birthdate: date = BirthdateField()
