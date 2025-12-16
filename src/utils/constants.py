@@ -107,3 +107,9 @@ DEFAULT_CLOUDINARY_API_KEY = "your_cloudinary_api_key"
 DEFAULT_CLOUDINARY_API_SECRET = "your_api_cloudinary_api_secret"
 DEFAULT_SALT_USER = "your_user_identifier_salt"
 DEFAULT_SALT_AVATAR = "your_avatar_identifier_salt"
+
+# ==============
+# Log templates
+# ==============
+
+LOG_CONTACT_TEMPLATE = "[%s] user_id=%s contact_id=%s"

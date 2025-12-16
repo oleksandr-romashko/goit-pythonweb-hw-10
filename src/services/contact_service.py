@@ -10,6 +10,7 @@ from src.db.repository import ContactsRepository
 from src.providers.cache_provider.contact_cache import (
     ContactsCountUserRedisCacheProvider,
 )
+from src.utils.constants import LOG_CONTACT_TEMPLATE
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 
@@ -152,6 +153,7 @@ class ContactService:
 
         # Call repository to create
         contact = await self.repo.create_contact(user_id, normalized_data)
+        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_CREATED", user_id, contact.id)
 
         # Invalidate user contacts count cache
         if self.contacts_count_cache:
@@ -254,6 +256,9 @@ class ContactService:
         contact = await self.repo.update_contact_by_id(
             user_id, contact_id, normalized_data
         )
+        if not contact:
+            return None
+        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_FULL", user_id, contact.id)
 
         return contact
 
@@ -328,6 +333,11 @@ class ContactService:
 
         # Call repository to update
         contact = await self.repo.update_contact_by_id(user_id, contact_id, update_data)
+        if not contact:
+            return None
+        logger.debug(
+            LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_PARTIAL", user_id, contact.id
+        )
 
         return contact
 
@@ -338,6 +348,9 @@ class ContactService:
         Invalidates contacts count cache, if cache is available.
         """
         contact = await self.repo.remove_contact_by_id(user_id, contact_id)
+        if not contact:
+            return None
+        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_DELETED", user_id, contact.id)
 
         # Delete user contacts count cache
         if self.contacts_count_cache:
