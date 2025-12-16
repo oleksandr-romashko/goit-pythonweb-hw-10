@@ -11,6 +11,7 @@ from src.providers.cache_providers.contact_cache import ContactRedisCacheProvide
 from src.providers.cache_providers.contacts_count_cache import (
     ContactsCountUserRedisCacheProvider,
 )
+from src.providers.cache_providers.logs import CacheEvent
 from src.utils.constants import LOG_CONTACT_TEMPLATE
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
@@ -199,18 +200,13 @@ class ContactService:
         """
         # 1. Try get user from cache
         if self.contacts_count_cache:
-            contacts_count_cached: Optional[int] = (
-                await self.contacts_count_cache.get_contacts_count(user_id)
-            )
-            if contacts_count_cached is not None:
-                logger.debug(
-                    "[CACHE HIT] User contacts count for user_id=%s",
-                    user_id,
-                )
-                return contacts_count_cached
-            logger.debug("[CACHE MISS] User contacts count for user_id=%s", user_id)
+            cached = await self.contacts_count_cache.get_contacts_count(user_id)
+            if cached is not None:
+                CacheEvent.log_contacts_count_cache_hit(user_id)
+                return cached
+            CacheEvent.log_contacts_count_cache_miss(user_id)
         else:
-            logger.debug("[CACHE SKIPPED] User contacts count cache is disabled")
+            CacheEvent.log_contacts_count_cache_skipped()
 
         # 2. If not in cache --> request from DB
         contacts_count = await self.repo.get_contacts_total_count(user_id)
@@ -236,19 +232,11 @@ class ContactService:
         if self.contact_cache:
             cached = await self.contact_cache.get_contact(user_id, contact_id)
             if cached is not None:
-                logger.debug(
-                    "[CACHE HIT] Contact for user_id=%s, contact_id=%s",
-                    user_id,
-                    contact_id,
-                )
+                CacheEvent.log_contact_cache_hit(user_id, contact_id)
                 return cached
-            logger.debug(
-                "[CACHE MISS] Contact for user_id=%s, contact_id=%s",
-                user_id,
-                contact_id,
-            )
+            CacheEvent.log_contact_cache_miss(user_id, contact_id)
         else:
-            logger.debug("[CACHE SKIPPED] Contact cache is disabled")
+            CacheEvent.log_contact_cache_skipped()
 
         # 2. If not in cache --> request from DB
         contact_orm = await self.repo.get_contact_by_id(user_id, contact_id)

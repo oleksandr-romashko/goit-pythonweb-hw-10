@@ -14,7 +14,7 @@ from redis.asyncio import Redis
 from src.config import app_config
 from src.services.dtos import ContactDTO
 
-from .cache_provider_base import RedisCacheProvider
+from .cache_provider import RedisCacheProvider
 
 
 class ContactRedisCacheProvider(RedisCacheProvider[ContactDTO]):

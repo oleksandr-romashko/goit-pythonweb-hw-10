@@ -7,9 +7,9 @@ Provides class to store, retrieve, and invalidate typed cached data.
 from abc import ABC, abstractmethod
 from typing import Optional, Union, TypeVar, Generic
 
-from redis.asyncio import Redis
+from redis.asyncio import Redis, RedisError
 
-from src.utils.logger import logger
+from .logs import CacheEvent
 
 T = TypeVar("T")
 
@@ -66,26 +66,17 @@ class RedisCacheProvider(CacheProvider[T]):
         try:
             value = self._deserialize_value(raw)
         except Exception:  # pylint: disable=broad-exception-caught
-            logger.debug(
-                (
-                    "[CACHE ERROR] Can't load (deserialize) cache for %s. "
-                    "Cache may be corrupted, malformed or value schema has changed."
-                ),
-                key,
-            )
-            await self.redis.delete(key)  # Remove unprocessable cache value
+            CacheEvent.log_cache_deserialize_error(key)
+            try:
+                await self.redis.delete(key)  # Remove unprocessable cache value
+            except RedisError:
+                CacheEvent.log_cache_invalidate_failed(key)
             return None
 
         if self.sliding_ttl:
             # Apply Sliding TTL Cache strategy
-            logger.debug(
-                (
-                    "[CACHE SLIDE] Applied cache slide for cache key=%s "
-                    "as TTL slide strategy was enabled for the %s cache provider"
-                ),
-                key,
-                self.__class__.__name__,
-            )
+            provider_name = self.__class__.__name__
+            CacheEvent.log_cache_slide_applied(key, provider_name)
             await self.redis.expire(key, self.ttl)
 
         return value
@@ -103,7 +94,7 @@ class RedisCacheProvider(CacheProvider[T]):
         try:
             raw = self._serialize_value(value)
         except Exception:  # pylint: disable=broad-exception-caught
-            logger.debug("[CACHE ERROR] Can't create (serialize) cache for %s", key)
+            CacheEvent.log_cache_serialize_error(key)
             return
 
         await self.redis.set(key, raw, ex=self.ttl)
@@ -117,7 +108,10 @@ class RedisCacheProvider(CacheProvider[T]):
         """
         key = self._build_key(**kwargs)
 
-        await self.redis.delete(key)
+        try:
+            await self.redis.delete(key)
+        except RedisError:
+            CacheEvent.log_cache_invalidate_failed(key)
 
     def _build_key(self, **kwargs: Union[int, str]) -> str:
         """Formats cache key based on key template."""

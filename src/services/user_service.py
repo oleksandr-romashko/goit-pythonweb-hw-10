@@ -9,6 +9,7 @@ from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.providers.avatar_provider import GravatarProvider
+from src.providers.cache_providers.logs import CacheEvent
 from src.providers.cache_providers.user_cache import UserRedisCacheProvider
 from src.providers.errors import GravatarResolveError
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
@@ -306,11 +307,11 @@ class UserService:
         if self.user_cache:
             cashed = await self.user_cache.get_user(user_id)
             if cashed is not None:
-                logger.debug("[CACHE HIT] User for user_id=%s", cashed.id)
+                CacheEvent.log_user_cache_hit(user_id)
                 return cashed
-            logger.debug("[CACHE MISS] User for user_id=%s", user_id)
+            CacheEvent.log_user_cache_miss(user_id)
         else:
-            logger.debug("[CACHE SKIPPED] User cache is disabled")
+            CacheEvent.log_user_cache_skipped()
 
         # 2. If not in cache --> request from DB
         user_orm = await self.repo.get_user_by_id(user_id)
