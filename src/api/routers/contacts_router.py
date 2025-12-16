@@ -111,33 +111,6 @@ async def get_all_contacts(
 
 
 @router.get(
-    "/{contact_id}",
-    summary="Get contact by ID",
-    description="Retrieve a single contact by its unique identifier.",
-    response_model=ContactResponseSchema,
-    status_code=status.HTTP_200_OK,
-    response_description="Successfully retrieved user contact.",
-    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
-)
-async def get_single_contact_by_id(
-    contact_id: int = Path(
-        description="The ID of the contact to retrieve.",
-        ge=1,
-        example=1,
-    ),
-    user: UserDTO = Depends(get_current_active_user()),
-    contacts_service: ContactService = Depends(get_contacts_service),
-) -> ContactResponseSchema:
-    """Retrieve a single contact by its ID."""
-    contact: Optional[Contact] = await contacts_service.get_contact_by_id(
-        user.id, contact_id
-    )
-    if contact is None:
-        raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
-    return ContactResponseSchema.model_validate(contact)
-
-
-@router.get(
     "/upcoming-birthdays",
     summary="List all upcoming birthdays celebrations in 7 days",
     description=(
@@ -174,6 +147,33 @@ async def get_upcoming_birthdays(
             ],
         }
     )
+
+
+@router.get(
+    "/{contact_id}",
+    summary="Get contact by ID",
+    description="Retrieve a single contact by its unique identifier.",
+    response_model=ContactResponseSchema,
+    status_code=status.HTTP_200_OK,
+    response_description="Successfully retrieved user contact.",
+    responses={**ON_CONTACT_NOT_FOUND_RESPONSE},
+)
+async def get_single_contact_by_id(
+    contact_id: int = Path(
+        description="The ID of the contact to retrieve.",
+        ge=1,
+        example=1,
+    ),
+    user: UserDTO = Depends(get_current_active_user()),
+    contacts_service: ContactService = Depends(get_contacts_service),
+) -> ContactResponseSchema:
+    """Retrieve a single contact by its ID."""
+    contact: Optional[Contact] = await contacts_service.get_contact_by_id(
+        user.id, contact_id
+    )
+    if contact is None:
+        raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
+    return ContactResponseSchema.model_validate(contact)
 
 
 @router.put(
