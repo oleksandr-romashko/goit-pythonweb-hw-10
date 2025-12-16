@@ -7,9 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Contact
 from src.db.repository import ContactsRepository
-from src.providers.cache_provider.contacts_count_cache import (
-    ContactsCountUserRedisCacheProvider,
-)
+from src.providers.cache_providers import ContactsCountUserRedisCacheProvider
 from src.utils.constants import LOG_CONTACT_TEMPLATE
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination

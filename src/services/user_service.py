@@ -9,7 +9,7 @@ from src.db.models import User
 from src.db.models.enums.user_roles import UserRole
 from src.db.repository import UsersRepository
 from src.providers.avatar_provider import GravatarProvider
-from src.providers.cache_provider.user_cache import UserRedisCacheProvider
+from src.providers.cache_providers import UserRedisCacheProvider
 from src.providers.errors import GravatarResolveError
 from src.utils.constants import DEFAULT_SUPERADMIN_EMAIL, DEFAULT_SUPERADMIN_PASSWORD
 from src.utils.logger import logger

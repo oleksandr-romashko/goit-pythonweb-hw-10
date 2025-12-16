@@ -50,7 +50,7 @@ class UserDTO:
 
     @classmethod
     def from_dict(cls, data: dict) -> "UserDTO":
-        """Create DTO from dictionary."""
+        """Create DTO from dictionary (e.g. cache)."""
         return cls(
             id=data["id"],
             username=data["username"],
@@ -73,7 +73,7 @@ class UserDTO:
         )
 
     def to_dict(self) -> dict:
-        """Convert DTO to dictionary for JSON serialization."""
+        """Convert DTO to dictionary for JSON / cache serialization."""
         data = asdict(self)
         data["role"] = self.role.value if isinstance(self.role, UserRole) else self.role
         if data["created_at"]:

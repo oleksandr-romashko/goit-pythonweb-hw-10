@@ -2,7 +2,7 @@
 User cache module.
 
 Provides helper functions to store, retrieve, and invalidate cached
-user data (UserDTO) in Redis.
+user contacts count data (int) in Redis.
 """
 
 import json
@@ -13,7 +13,7 @@ from redis.asyncio import Redis
 
 from src.config import app_config
 
-from .cache_provider import RedisCacheProvider
+from .cache_provider_base import RedisCacheProvider
 
 
 class ContactsCountUserRedisCacheProvider(RedisCacheProvider[int]):
