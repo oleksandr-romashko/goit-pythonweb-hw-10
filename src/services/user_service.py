@@ -304,10 +304,10 @@ class UserService:
         """
         # 1. Try get user from cache
         if self.user_cache:
-            user_cached: Optional[UserDTO] = await self.user_cache.get_user(user_id)
-            if user_cached is not None:
-                logger.debug("[CACHE HIT] User for user_id=%s", user_cached.id)
-                return user_cached
+            cashed = await self.user_cache.get_user(user_id)
+            if cashed is not None:
+                logger.debug("[CACHE HIT] User for user_id=%s", cashed.id)
+                return cashed
             logger.debug("[CACHE MISS] User for user_id=%s", user_id)
         else:
             logger.debug("[CACHE SKIPPED] User cache is disabled")
@@ -470,22 +470,22 @@ class UserService:
         hashed_password = get_password_hash(new_password)
 
         # 3. Update user in DB
-        updated_user = await self.repo.update_user_by_id(
+        user_orm = await self.repo.update_user_by_id(
             target_user.id, {"hashed_password": hashed_password}
         )
-        if not updated_user:
+        if not user_orm:
             return None
 
         logger.debug("User %s updated password", target_user)
 
+        user_dto = UserDTO.from_orm(user_orm)
+
         # 4. Update user cache
         if self.user_cache:
-            await self.user_cache.set_user(
-                target_user.id, UserDTO.from_orm(updated_user)
-            )
+            await self.user_cache.set_user(target_user.id, user_dto)
 
         # 5. Return updated user DTO
-        return UserDTO.from_orm(updated_user)
+        return user_dto
 
     async def update_user_by_admin(
         self,
@@ -671,7 +671,7 @@ class UserService:
 
         # 5.3 Perform user update
 
-        result_user = None
+        result_user_orm = None
         if not data_to_update:
             # Nothing to update
             logger.debug(
@@ -684,13 +684,14 @@ class UserService:
                 target_user.role.upper(),
                 target_user,
             )
-            result_user = target_user_orm
+            result_user_orm = target_user_orm
         else:
-            result_user = await self.repo.update_user_by_id(
+            result_user_orm = await self.repo.update_user_by_id(
                 target_user.id, data_to_update
             )
-            if not result_user:
+            if not result_user_orm:
                 return None
+
             logger.debug(
                 "%s %s updated other %s %s with new data: %s.",
                 requester.role.upper(),
@@ -703,11 +704,11 @@ class UserService:
             # 5.4 Update user cache
             if self.user_cache:
                 await self.user_cache.set_user(
-                    target_user.id, UserDTO.from_orm(result_user)
+                    target_user.id, UserDTO.from_orm(result_user_orm)
                 )
 
         # 5.5 Form reply
-        user_dto = UserDTO.from_orm(result_user)
+        user_dto = UserDTO.from_orm(result_user_orm)
         avatar_reset = (
             avatar is not NOT_PROVIDED
             and avatar is None

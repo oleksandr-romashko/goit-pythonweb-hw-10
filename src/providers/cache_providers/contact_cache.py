@@ -62,7 +62,7 @@ class ContactRedisCacheProvider(RedisCacheProvider[ContactDTO]):
         """
         await super().set(contact_dto, user_id=user_id, contact_id=contact_id)
 
-    async def invalidate_contact(self, user_id: int, contact_id) -> None:
+    async def invalidate_contact(self, user_id: int, contact_id: int) -> None:
         """
         Remove a cached ContactDTO for a given user ID and contact_id.
 

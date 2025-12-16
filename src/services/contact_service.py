@@ -15,6 +15,7 @@ from src.utils.constants import LOG_CONTACT_TEMPLATE
 from src.utils.logger import logger
 from src.utils.query_helpers import get_pagination
 
+from .dtos import ContactDTO
 from .errors import BadProvidedDataError
 
 
@@ -119,8 +120,10 @@ class ContactService:
     ):
         """Initialize the service with a contacts repository."""
         self.repo: ContactsRepository = repo or ContactsRepository(db_session)
-        self.contact_cache = contact_cache
-        self.contacts_count_cache = contacts_count_cache
+        self.contact_cache: Optional[ContactRedisCacheProvider] = contact_cache
+        self.contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = (
+            contacts_count_cache
+        )
 
     async def create_contact(
         self,
@@ -131,7 +134,7 @@ class ContactService:
         phone_number: str,
         birthdate: date,
         info: Optional[str],
-    ) -> Contact:
+    ) -> ContactDTO:
         """
         Create a new contact for a given user.
 
@@ -153,18 +156,24 @@ class ContactService:
         )
 
         # Call repository to create
-        contact = await self.repo.create_contact(user_id, normalized_data)
-        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_CREATED", user_id, contact.id)
+        contact_orm = await self.repo.create_contact(user_id, normalized_data)
+        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_CREATED", user_id, contact_orm.id)
+
+        contact_dto = ContactDTO.from_orm(contact_orm)
+
+        # Set contact cache
+        if self.contact_cache:
+            await self.contact_cache.set_contact(user_id, contact_orm.id, contact_dto)
 
         # Invalidate user contacts count cache
         if self.contacts_count_cache:
             await self.contacts_count_cache.invalidate_contacts_count(user_id)
 
-        return contact
+        return contact_dto
 
     async def get_all_contacts(
         self, user_id: int, pagination: Dict[str, int], filters: Dict[str, Any]
-    ) -> Tuple[List[Contact], int]:
+    ) -> Tuple[List[ContactDTO], int]:
         """Return a paginated list of contacts with applied optional filters."""
         # Check if there are contacts
         total_count = await self.repo.get_contacts_total_count(user_id)
@@ -173,11 +182,14 @@ class ContactService:
 
         # Get all existing contacts
         skip, limit = get_pagination(pagination)
-        contacts: List[Contact] = await self.repo.get_all_contacts(
+        contacts_orm: List[Contact] = await self.repo.get_all_contacts(
             user_id, skip, limit, **filters
         )
 
-        return contacts, total_count
+        # Convert orms to dtos
+        contacts_dto: List[ContactDTO] = [ContactDTO.from_orm(c) for c in contacts_orm]
+
+        return contacts_dto, total_count
 
     async def get_contacts_count(self, user_id: int) -> int:
         """
@@ -218,9 +230,39 @@ class ContactService:
 
     async def get_contact_by_id(
         self, user_id: int, contact_id: int
-    ) -> Optional[Contact]:
+    ) -> Optional[ContactDTO]:
         """Return a single contact by its ID, or None if not found."""
-        return await self.repo.get_contact_by_id(user_id, contact_id)
+        # 1. Try get contact from cache
+        if self.contact_cache:
+            cached = await self.contact_cache.get_contact(user_id, contact_id)
+            if cached is not None:
+                logger.debug(
+                    "[CACHE HIT] Contact for user_id=%s, contact_id=%s",
+                    user_id,
+                    contact_id,
+                )
+                return cached
+            logger.debug(
+                "[CACHE MISS] Contact for user_id=%s, contact_id=%s",
+                user_id,
+                contact_id,
+            )
+        else:
+            logger.debug("[CACHE SKIPPED] Contact cache is disabled")
+
+        # 2. If not in cache --> request from DB
+        contact_orm = await self.repo.get_contact_by_id(user_id, contact_id)
+        if not contact_orm:
+            return None
+
+        # 3. Convert ORM to DTO object
+        contact_dto = ContactDTO.from_orm(contact_orm)
+
+        # 4. Save to cache
+        if self.contact_cache:
+            await self.contact_cache.set_contact(user_id, contact_id, contact_dto)
+
+        return contact_dto
 
     async def overwrite_contact_by_id(
         self,
@@ -232,7 +274,7 @@ class ContactService:
         phone_number: str,
         birthdate: date,
         info: Optional[str],
-    ) -> Optional[Contact]:
+    ) -> Optional[ContactDTO]:
         """
         Update a contact fully or partially.
 
@@ -254,14 +296,22 @@ class ContactService:
         )
 
         # Call repository to update
-        contact = await self.repo.update_contact_by_id(
+        contact_orm = await self.repo.update_contact_by_id(
             user_id, contact_id, normalized_data
         )
-        if not contact:
+        if not contact_orm:
             return None
-        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_FULL", user_id, contact.id)
+        logger.debug(
+            LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_FULL", user_id, contact_orm.id
+        )
 
-        return contact
+        contact_dto = ContactDTO.from_orm(contact_orm)
+
+        # Update user cache
+        if self.contact_cache and contact_orm:
+            await self.contact_cache.set_contact(user_id, contact_orm.id, contact_dto)
+
+        return contact_dto
 
     async def update_contact_partially(
         self,
@@ -273,7 +323,7 @@ class ContactService:
         phone_number: Optional[str] = None,
         birthdate: Optional[date] = None,
         info: Optional[str] = None,
-    ) -> Optional[Contact]:
+    ) -> Optional[ContactDTO]:
         """
         Partially update an existing contact.
 
@@ -333,28 +383,42 @@ class ContactService:
             raise BadProvidedDataError(errors)
 
         # Call repository to update
-        contact = await self.repo.update_contact_by_id(user_id, contact_id, update_data)
-        if not contact:
+        contact_orm = await self.repo.update_contact_by_id(
+            user_id, contact_id, update_data
+        )
+        if not contact_orm:
             return None
         logger.debug(
-            LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_PARTIAL", user_id, contact.id
+            LOG_CONTACT_TEMPLATE, "CONTACT_UPDATED_PARTIAL", user_id, contact_orm.id
         )
 
-        return contact
+        contact_dto = ContactDTO.from_orm(contact_orm)
 
-    async def remove_contact(self, user_id: int, contact_id: int) -> Optional[Contact]:
+        # Update user cache
+        if self.contact_cache and contact_orm:
+            await self.contact_cache.set_contact(user_id, contact_orm.id, contact_dto)
+
+        return contact_dto
+
+    async def remove_contact(
+        self, user_id: int, contact_id: int
+    ) -> Optional[ContactDTO]:
         """
         Delete a contact by ID.
 
         Invalidates contacts count cache, if cache is available.
         """
-        contact = await self.repo.remove_contact_by_id(user_id, contact_id)
-        if not contact:
+        contact_orm = await self.repo.remove_contact_by_id(user_id, contact_id)
+        if not contact_orm:
             return None
-        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_DELETED", user_id, contact.id)
+        logger.debug(LOG_CONTACT_TEMPLATE, "CONTACT_DELETED", user_id, contact_orm.id)
 
-        # Delete user contacts count cache
+        # Invalidate contact cache
+        if self.contact_cache:
+            await self.contact_cache.invalidate_contact(user_id, contact_id)
+
+        # Invalidate user contacts count cache
         if self.contacts_count_cache:
             await self.contacts_count_cache.invalidate_contacts_count(user_id)
 
-        return contact
+        return ContactDTO.from_orm(contact_orm)

@@ -5,11 +5,8 @@ Provides operations for contacts, including listing, retrieving, creating,
 updating, and deleting contacts.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, Path, Depends, status
 
-from src.db.models import Contact
 from src.services import ContactService
 from src.services.dtos import UserDTO
 from src.services.errors import BadProvidedDataError
@@ -61,15 +58,11 @@ async def create_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Create a new contact."""
-
     try:
-        contact: Contact = await contacts_service.create_contact(
-            user.id, **body.model_dump()
-        )
+        contact = await contacts_service.create_contact(user.id, **body.model_dump())
     except BadProvidedDataError as exc:
         logger.debug(exc)
         raise_http_400_error(detail=exc.errors)
-
     return ContactResponseSchema.model_validate(contact)
 
 
@@ -168,9 +161,7 @@ async def get_single_contact_by_id(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Retrieve a single contact by its ID."""
-    contact: Optional[Contact] = await contacts_service.get_contact_by_id(
-        user.id, contact_id
-    )
+    contact = await contacts_service.get_contact_by_id(user.id, contact_id)
     if contact is None:
         raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
     return ContactResponseSchema.model_validate(contact)
@@ -199,7 +190,7 @@ async def overwrite_contact(
 ) -> ContactResponseSchema:
     """Fully update an existing contact by ID."""
     try:
-        contact: Optional[Contact] = await contacts_service.overwrite_contact_by_id(
+        contact = await contacts_service.overwrite_contact_by_id(
             user.id, contact_id, **body.model_dump()
         )
     except BadProvidedDataError as exc:
@@ -234,7 +225,7 @@ async def patch_contact(
 ) -> ContactResponseSchema:
     """Partially update an existing contact."""
     try:
-        contact: Optional[Contact] = await contacts_service.update_contact_partially(
+        contact = await contacts_service.update_contact_partially(
             user.id, contact_id, **body.model_dump(exclude_unset=True)
         )
     except BadProvidedDataError as exc:
@@ -264,9 +255,7 @@ async def delete_contact(
     contacts_service: ContactService = Depends(get_contacts_service),
 ) -> ContactResponseSchema:
     """Delete a contact by ID and return the deleted object."""
-    contact: Optional[Contact] = await contacts_service.remove_contact(
-        user.id, contact_id
-    )
+    contact = await contacts_service.remove_contact(user.id, contact_id)
     if contact is None:
         raise_http_404_error(MESSAGE_ERROR_CONTACT_NOT_FOUND)
     return ContactResponseSchema.model_validate(contact)
