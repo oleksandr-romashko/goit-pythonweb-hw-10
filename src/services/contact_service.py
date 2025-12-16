@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Contact
 from src.db.repository import ContactsRepository
-from src.providers.cache_provider.contact_cache import (
+from src.providers.cache_provider.contacts_count_user_cache import (
     ContactsCountUserRedisCacheProvider,
 )
 from src.utils.constants import LOG_CONTACT_TEMPLATE

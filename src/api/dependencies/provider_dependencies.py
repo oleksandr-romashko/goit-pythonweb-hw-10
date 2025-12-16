@@ -7,7 +7,7 @@ from src.config import app_config
 from src.providers.cloud_provider import CloudProvider, CloudinaryCloudProvider
 from src.providers.avatar_provider import GravatarProvider
 from src.providers.cache_provider.user_cache import UserRedisCacheProvider
-from src.providers.cache_provider.contact_cache import (
+from src.providers.cache_provider.contacts_count_user_cache import (
     ContactsCountUserRedisCacheProvider,
 )
 

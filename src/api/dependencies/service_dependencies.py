@@ -4,7 +4,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.providers.cache_provider.user_cache import UserRedisCacheProvider
-from src.providers.cache_provider.contact_cache import (
+from src.providers.cache_provider.contacts_count_user_cache import (
     ContactsCountUserRedisCacheProvider,
 )
 from src.services import (
