@@ -6,10 +6,11 @@ from redis.asyncio import Redis
 from src.config import app_config
 from src.providers.cloud_provider import CloudProvider, CloudinaryCloudProvider
 from src.providers.avatar_provider import GravatarProvider
-from src.providers.cache_provider.user_cache import UserRedisCacheProvider
-from src.providers.cache_provider.contacts_count_cache import (
+from src.providers.cache_providers.contact_cache import ContactRedisCacheProvider
+from src.providers.cache_providers.contacts_count_cache import (
     ContactsCountUserRedisCacheProvider,
 )
+from src.providers.cache_providers.user_cache import UserRedisCacheProvider
 
 from .cache_dependencies import get_app_cache
 
@@ -29,11 +30,11 @@ def get_gravatar_provider() -> GravatarProvider:
     return GravatarProvider()
 
 
-def get_user_cache_provider(
+def get_contact_cache_provider(
     cache: Redis = Depends(get_app_cache),
-) -> UserRedisCacheProvider:
-    """Dependency provider for UserRedisCacheProvider."""
-    return UserRedisCacheProvider(cache)
+) -> ContactRedisCacheProvider:
+    """Dependency provider for ContactRedisCacheProvider."""
+    return ContactRedisCacheProvider(cache)
 
 
 def get_contacts_count_cache_provider(
@@ -41,3 +42,10 @@ def get_contacts_count_cache_provider(
 ) -> ContactsCountUserRedisCacheProvider:
     """Dependency provider for ContactsCountRedisCacheProvider."""
     return ContactsCountUserRedisCacheProvider(cache)
+
+
+def get_user_cache_provider(
+    cache: Redis = Depends(get_app_cache),
+) -> UserRedisCacheProvider:
+    """Dependency provider for UserRedisCacheProvider."""
+    return UserRedisCacheProvider(cache)

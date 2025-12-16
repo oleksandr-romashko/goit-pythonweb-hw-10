@@ -24,7 +24,7 @@ from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from src.providers.cache_provider.connection import get_redis, RedisDB
+from src.providers.cache_providers.connection import get_redis, RedisDB
 from src.utils.constants import MESSAGE_ERROR_TOO_MANY_REQUESTS
 from src.utils.logger import logger
 

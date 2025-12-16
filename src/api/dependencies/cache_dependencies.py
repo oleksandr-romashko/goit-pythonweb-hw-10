@@ -2,7 +2,7 @@
 
 from redis.asyncio import Redis
 
-from src.providers.cache_provider.connection import get_redis, RedisDB
+from src.providers.cache_providers.connection import get_redis, RedisDB
 
 
 async def get_app_cache() -> Redis:

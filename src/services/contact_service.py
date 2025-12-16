@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.models import Contact
 from src.db.repository import ContactsRepository
+from src.providers.cache_providers.contact_cache import ContactRedisCacheProvider
 from src.providers.cache_providers.contacts_count_cache import (
     ContactsCountUserRedisCacheProvider,
 )
@@ -113,13 +114,13 @@ class ContactService:
         db_session: AsyncSession,
         *,
         repo: Optional[ContactsRepository] = None,
+        contact_cache: Optional[ContactRedisCacheProvider] = None,
         contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = None,
     ):
         """Initialize the service with a contacts repository."""
         self.repo: ContactsRepository = repo or ContactsRepository(db_session)
-        self.contacts_count_cache: Optional[ContactsCountUserRedisCacheProvider] = (
-            contacts_count_cache
-        )
+        self.contact_cache = contact_cache
+        self.contacts_count_cache = contacts_count_cache
 
     async def create_contact(
         self,
