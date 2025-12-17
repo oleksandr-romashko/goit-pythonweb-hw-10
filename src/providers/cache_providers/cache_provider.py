@@ -55,7 +55,12 @@ class RedisCacheProvider(CacheProvider[T]):
         """
         key = self._build_key(**kwargs)
 
-        raw = await self.redis.get(key)
+        try:
+            raw = await self.redis.get(key)
+        except RedisError:
+            CacheEvent.log_cache_provider_unavailable(key)
+            return None
+
         if raw is None:
             return None
 
@@ -75,9 +80,11 @@ class RedisCacheProvider(CacheProvider[T]):
 
         if self.sliding_ttl:
             # Apply Sliding TTL Cache strategy
-            provider_name = self.__class__.__name__
-            CacheEvent.log_cache_slide_applied(key, provider_name)
-            await self.redis.expire(key, self.ttl)
+            try:
+                await self.redis.expire(key, self.ttl)
+                CacheEvent.log_cache_slide_applied(key, self.__class__.__name__)
+            except RedisError:
+                CacheEvent.log_cache_slide_failed(key)
 
         return value
 
@@ -97,7 +104,10 @@ class RedisCacheProvider(CacheProvider[T]):
             CacheEvent.log_cache_serialize_error(key)
             return
 
-        await self.redis.set(key, raw, ex=self.ttl)
+        try:
+            await self.redis.set(key, raw, ex=self.ttl)
+        except RedisError:
+            CacheEvent.log_cache_provider_unavailable(key)
 
     async def invalidate(self, **kwargs: Union[int, str]) -> None:
         """

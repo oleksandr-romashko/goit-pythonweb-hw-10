@@ -71,6 +71,16 @@ class CacheEvent:
     # ==========================
 
     @classmethod
+    def log_cache_provider_unavailable(cls, key: str) -> None:
+        """Log provider is unavailable failure."""
+
+        logger.warning(
+            "[CACHE %s] Cache provider unavailable for key=%s",
+            cls._EventType.ERROR,
+            key,
+        )
+
+    @classmethod
     def log_cache_deserialize_error(cls, key: str) -> None:
         """Log cache deserialization failure."""
         logger.debug(
@@ -96,6 +106,16 @@ class CacheEvent:
         """Log cache invalidate failure."""
         logger.warning(
             "[CACHE %s] Failed to invalidate cache key=%s",
+            cls._EventType.ERROR,
+            key,
+        )
+
+    @classmethod
+    def log_cache_slide_failed(cls, key: str) -> None:
+        """Log sliding TTL cache failure."""
+
+        logger.debug(
+            "[CACHE %s] Failed to apply sliding TTL for key=%s",
             cls._EventType.ERROR,
             key,
         )
