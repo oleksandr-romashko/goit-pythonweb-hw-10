@@ -3,7 +3,7 @@
 ### [# goit-pythonweb-hw-10](https://github.com/topics/goit-pythonweb-hw-10) <!-- omit in toc -->
 
 <p align="center">
-  <img align="center" src="./asserts/thumbnail.svg" width="200" title="Project thumbnail" alt="project thumbnail">
+  <img align="center" src="./assets/thumbnail.svg" width="200" title="Project thumbnail" alt="project thumbnail">
 </p>
 
 ## Building a REST API for Contact Management using FastAPI. <!-- omit in toc -->
@@ -11,7 +11,7 @@
 This project demonstrates the use of **FastAPI** to build a REST API for managing personal contacts, along with **SQLAlchemy ORM** for relational **PostgreSQL** database operations, **Alembic** for schema migrations, and other technologies.
 
 <p align="center">
-  <img src="./asserts/project-showcase.jpg" alt="Project showcase image" width="600">
+  <img src="./assets/project-showcase.jpg" alt="Project showcase image" width="600">
 </p>
 
 The app allows storing and managing contacts with fields like `first_name`, `last_name`, `email`, `phone_number`, `birthdate`, and optional additional info.
